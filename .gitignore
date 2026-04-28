@@ -4,7 +4,7 @@ client/node_modules/
 server/node_modules/
 
 # Build
-client/dist/
+# client/dist/
 build/
 
 # Environment
