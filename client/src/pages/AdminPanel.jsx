@@ -17,7 +17,7 @@ const AdminPanel = () => {
             const res = await api.get('/admin/users');
             setUsers(res.data);
         } catch (err) {
-            console.error(err);
+            // console.error(err);
             if (!err.response) {
                 setError('Network Error: Backend server is unreachable.');
             } else {

@@ -54,7 +54,7 @@ const FileCard = ({ file, onContextMenu, onClick, viewMode = 'grid' }) => {
     };
 
     if (viewMode === 'list') {
-        const { user, activeUsername, activeAvatar } = useAuth();
+        const { user } = useAuth();
         const apiBase = api.defaults.baseURL.replace('/api', '');
         const ownerName = file.ownerId?.username || 'Unknown';
         const ownerIdStr = file.ownerId?._id || file.ownerId;
@@ -90,18 +90,10 @@ const FileCard = ({ file, onContextMenu, onClick, viewMode = 'grid' }) => {
                 {/* Owner Column */}
                 <div className="w-48 hidden md:flex items-center gap-2 shrink-0">
                     <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden border border-white shadow-sm">
-                        {isMe ? (
-                            activeAvatar ? (
-                                <img src={`${apiBase}${activeAvatar}`} alt={activeUsername} className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-[10px] font-bold text-slate-500 uppercase">{activeUsername[0]}</span>
-                            )
+                        {file.ownerId?.avatar ? (
+                            <img src={`${apiBase}${file.ownerId.avatar}`} alt={ownerName} className="w-full h-full object-cover" />
                         ) : (
-                            file.ownerId?.avatar ? (
-                                <img src={`${apiBase}${file.ownerId.avatar}`} alt={ownerName} className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-[10px] font-bold text-slate-500 uppercase">{ownerName[0]}</span>
-                            )
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">{ownerName[0]}</span>
                         )}
                     </div>
                     <span className="text-sm text-slate-600 font-medium">{isMe ? 'me' : ownerName}</span>

@@ -13,7 +13,7 @@ import FolderPasswordModal from '../components/drive/FolderPasswordModal';
 import { useAuth } from '../context/AuthContext';
 
 const Shared = () => {
-    const { user } = useAuth();
+    const { user, activeSpace } = useAuth();
     const navigate = useNavigate();
     const [folders, setFolders] = useState([]);
     const [files, setFiles] = useState([]);
@@ -34,8 +34,8 @@ const Shared = () => {
         try {
             setLoading(true);
             const [folderRes, fileRes] = await Promise.all([
-                api.get('/folders/shared/all'),
-                api.get('/files/shared/all')
+                api.get(`/folders/shared/all?space=${activeSpace}`),
+                api.get(`/files/shared/all?space=${activeSpace}`)
             ]);
             setFolders(folderRes.data);
             setFiles(fileRes.data);
@@ -48,7 +48,7 @@ const Shared = () => {
 
     useEffect(() => {
         fetchShared();
-    }, []);
+    }, [activeSpace]);
 
     const handleContextMenu = (e, item, type) => {
         e.preventDefault();
@@ -64,7 +64,7 @@ const Shared = () => {
         if (action === 'download') {
             try {
                 const token = localStorage.getItem('token');
-                const response = await api.get(`/files/download/${item._id}?token=${token}`, {
+                const response = await api.get(`/files/download/${item._id}?token=${token}&space=${activeSpace}`, {
                     responseType: 'blob'
                 });
 
@@ -87,7 +87,7 @@ const Shared = () => {
             setColorPickerItem(item);
         } else if (action === 'star') {
             try {
-                const endpoint = type === 'folder' ? `/folders/${item._id}/star` : `/files/${item._id}/star`;
+                const endpoint = type === 'folder' ? `/folders/${item._id}/star?space=${activeSpace}` : `/files/${item._id}/star?space=${activeSpace}`;
                 await api.patch(endpoint);
                 fetchShared();
             } catch (err) {
@@ -95,7 +95,7 @@ const Shared = () => {
             }
         } else if (action === 'pin') {
             try {
-                const endpoint = type === 'folder' ? `/folders/${item._id}/pin` : `/files/${item._id}/pin`;
+                const endpoint = type === 'folder' ? `/folders/${item._id}/pin?space=${activeSpace}` : `/files/${item._id}/pin?space=${activeSpace}`;
                 const res = await api.patch(endpoint);
                 fetchShared();
                 showToast(res.data.isPinned ? 'Item pinned to top' : 'Item unpinned', 'success');

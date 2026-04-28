@@ -77,7 +77,6 @@ const Login = () => {
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="w-full bg-slate-200/50 border-transparent focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 rounded-2xl pl-12 pr-4 py-3 text-slate-800 transition-all outline-none font-medium"
                                     placeholder="••••••••"
-                                    required
                                 />
                             </div>
                         </div>

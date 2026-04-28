@@ -48,10 +48,10 @@ const folderSchema = new mongoose.Schema({
         type: String,
         default: null
     },
-    isSecondSpace: {
-        type: Boolean,
-        default: false,
-        index: true
+    spaceType: {
+        type: String,
+        enum: ['main', 'second'],
+        default: 'main'
     }
 }, { timestamps: true });
 

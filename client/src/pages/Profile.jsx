@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 
 const Profile = () => {
-    const { user, setUser, logout, isSecondSpace, activeUsername, activeAvatar, activeEmail } = useAuth();
+    const { user, setUser, logout, activeSpace } = useAuth();
     const navigate = useNavigate();
 
     // Modal States
@@ -24,18 +24,20 @@ const Profile = () => {
     const [isHistoryModalOpen, setIsHistoryModalOpen] = React.useState(false);
 
     // Form States
-    const [newUsername, setNewUsername] = React.useState(activeUsername || '');
-    const [newEmail, setNewEmail] = React.useState(activeEmail || '');
-
-    // Sync form state with active identity
-    React.useEffect(() => {
-        if (!isEditModalOpen) { // Only sync when modal is closed to avoid overriding user typing
-            setNewUsername(activeUsername || '');
-            setNewEmail(activeEmail || '');
-        }
-    }, [activeUsername, activeEmail, isEditModalOpen]);
+    const [newUsername, setNewUsername] = React.useState(user?.username || '');
+    const [newSecondSpaceUsername, setNewSecondSpaceUsername] = React.useState(user?.secondSpaceUsername || '');
+    const [newEmail, setNewEmail] = React.useState(user?.email || '');
     const [passwords, setPasswords] = React.useState({ current: '', new: '', confirm: '' });
     const [loading, setLoading] = React.useState(false);
+
+    // Sync form states when user context changes
+    React.useEffect(() => {
+        if (user) {
+            setNewUsername(user.username || '');
+            setNewSecondSpaceUsername(user.secondSpaceUsername || '');
+            setNewEmail(user.email || '');
+        }
+    }, [user]);
     const [message, setMessage] = React.useState({ type: '', text: '' });
     const fileInputRef = React.useRef(null);
 
@@ -64,7 +66,7 @@ const Profile = () => {
 
         const formData = new FormData();
         formData.append('avatar', file);
-        formData.append('isSecondSpace', isSecondSpace);
+
         setLoading(true);
         try {
             const res = await api.post('/auth/avatar', formData, {
@@ -85,15 +87,21 @@ const Profile = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await api.patch('/auth/update', {
-                username: newUsername,
-                email: newEmail,
-                isSecondSpace: isSecondSpace
-            });
+            const updateData = { email: newEmail };
+            if (activeSpace === 'second') {
+                updateData.secondSpaceUsername = newSecondSpaceUsername;
+            } else {
+                updateData.username = newUsername;
+            }
+
+            const res = await api.patch('/auth/update', updateData);
             setUser(res.data);
             localStorage.setItem('user', JSON.stringify(res.data));
             setIsEditModalOpen(false);
-            setMessage({ type: 'success', text: 'Profile updated successfully!' });
+            setMessage({
+                type: 'success',
+                text: `${activeSpace === 'second' ? 'Second Space Name' : 'Username'} updated successfully!`
+            });
         } catch (err) {
             setMessage({ type: 'error', text: err.response?.data?.error || 'Update failed' });
         } finally {
@@ -148,10 +156,10 @@ const Profile = () => {
                         onClick={handleAvatarClick}
                         className="w-32 h-32 rounded-3xl bg-gradient-to-br from-primary-500 to-indigo-600 flex items-center justify-center text-4xl font-black text-white shadow-2xl shadow-primary-200 ring-4 ring-white cursor-pointer overflow-hidden group/avatar relative"
                     >
-                        {activeAvatar ? (
-                            <img src={`${api.defaults.baseURL.replace('/api', '')}${activeAvatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                        {user?.avatar ? (
+                            <img src={`${api.defaults.baseURL.replace('/api', '')}${user.avatar}`} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
-                            activeUsername?.[0]?.toUpperCase()
+                            user?.username?.[0]?.toUpperCase()
                         )}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
                             <SettingsIcon className="text-white animate-pulse" size={24} />
@@ -166,14 +174,18 @@ const Profile = () => {
                     />
                     <div className="text-center md:text-left flex-1">
                         <div className="flex flex-col md:flex-row md:items-center gap-3 mb-2">
-                            <h1 className="text-4xl font-black text-slate-800 tracking-tight">{activeUsername}</h1>
-                            <span className="px-4 py-1.5 bg-primary-100 text-primary-700 text-xs font-black uppercase tracking-widest rounded-full border border-primary-200">
-                                {isSecondSpace ? 'Space Guest' : user?.role}
-                            </span>
+                            <h1 className="text-4xl font-black text-slate-800 tracking-tight">
+                                {activeSpace === 'second' ? (user?.secondSpaceUsername ?? 'Second Space User') : user?.username}
+                            </h1>
+                            {activeSpace !== 'second' && (
+                                <span className="px-4 py-1.5 bg-primary-100 text-primary-700 text-xs font-black uppercase tracking-widest rounded-full border border-primary-200">
+                                    {user?.role}
+                                </span>
+                            )}
                         </div>
                         <p className="text-slate-500 font-bold flex items-center justify-center md:justify-start gap-2">
                             <MailIcon size={16} />
-                            {activeEmail}
+                            {user?.email}
                         </p>
                         <div className="flex items-center justify-center md:justify-start gap-4 mt-6">
                             <button
@@ -241,53 +253,44 @@ const Profile = () => {
                         <h3 className="text-xl font-black text-slate-800 italic uppercase tracking-tighter">Security</h3>
                     </div>
                     <div className="space-y-4">
-                        {!isSecondSpace && (
-                            <>
-                                <div
-                                    onClick={() => setIsPasswordModalOpen(true)}
-                                    className="flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors cursor-pointer group/item"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-slate-50 rounded-lg group-hover/item:bg-indigo-50 transition-colors">
-                                            <SettingsIcon size={16} className="text-slate-400 group-hover/item:text-indigo-600" />
-                                        </div>
-                                        <span className="text-sm font-bold text-slate-700">Change Password</span>
-                                    </div>
-                                    <div className="w-2 h-2 rounded-full bg-slate-200 group-hover/item:bg-indigo-400"></div>
+                        <div
+                            onClick={() => setIsPasswordModalOpen(true)}
+                            className="flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors cursor-pointer group/item"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-slate-50 rounded-lg group-hover/item:bg-indigo-50 transition-colors">
+                                    <SettingsIcon size={16} className="text-slate-400 group-hover/item:text-indigo-600" />
                                 </div>
-                                <div
-                                    onClick={() => setIs2FAModalOpen(true)}
-                                    className="flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors cursor-pointer group/item"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-slate-50 rounded-lg group-hover/item:bg-indigo-50 transition-colors">
-                                            <ShieldIcon size={16} className="text-slate-400 group-hover/item:text-indigo-600" />
-                                        </div>
-                                        <span className="text-sm font-bold text-slate-700">Two-Factor Auth</span>
-                                    </div>
-                                    <span className={`text-[10px] font-black uppercase ${user?.twoFactorEnabled ? 'text-green-600' : 'text-slate-400'}`}>
-                                        {user?.twoFactorEnabled ? 'Enabled' : 'Disabled'}
-                                    </span>
-                                </div>
-                                <div
-                                    onClick={() => setIsHistoryModalOpen(true)}
-                                    className="flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors cursor-pointer group/item"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-slate-50 rounded-lg group-hover/item:bg-indigo-50 transition-colors">
-                                            <CalendarIcon size={16} className="text-slate-400 group-hover/item:text-indigo-600" />
-                                        </div>
-                                        <span className="text-sm font-bold text-slate-700">Login History</span>
-                                    </div>
-                                    <div className="w-2 h-2 rounded-full bg-slate-200"></div>
-                                </div>
-                            </>
-                        )}
-                        {isSecondSpace && (
-                            <div className="p-6 text-center bg-indigo-50/50 rounded-3xl border border-indigo-100">
-                                <p className="text-sm font-bold text-indigo-600 italic">Security is managed via Second Space PIN</p>
+                                <span className="text-sm font-bold text-slate-700">Change Password</span>
                             </div>
-                        )}
+                            <div className="w-2 h-2 rounded-full bg-slate-200 group-hover/item:bg-indigo-400"></div>
+                        </div>
+                        <div
+                            onClick={() => setIs2FAModalOpen(true)}
+                            className="flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors cursor-pointer group/item"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-slate-50 rounded-lg group-hover/item:bg-indigo-50 transition-colors">
+                                    <ShieldIcon size={16} className="text-slate-400 group-hover/item:text-indigo-600" />
+                                </div>
+                                <span className="text-sm font-bold text-slate-700">Two-Factor Auth</span>
+                            </div>
+                            <span className={`text-[10px] font-black uppercase ${user?.twoFactorEnabled ? 'text-green-600' : 'text-slate-400'}`}>
+                                {user?.twoFactorEnabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                        </div>
+                        <div
+                            onClick={() => setIsHistoryModalOpen(true)}
+                            className="flex items-center justify-between p-4 bg-white/50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors cursor-pointer group/item"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-slate-50 rounded-lg group-hover/item:bg-indigo-50 transition-colors">
+                                    <CalendarIcon size={16} className="text-slate-400 group-hover/item:text-indigo-600" />
+                                </div>
+                                <span className="text-sm font-bold text-slate-700">Login History</span>
+                            </div>
+                            <div className="w-2 h-2 rounded-full bg-slate-200"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -301,21 +304,23 @@ const Profile = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Username</p>
-                        <p className="text-md font-bold text-slate-700">{activeUsername}</p>
+                        <p className="text-md font-bold text-slate-700">
+                            {activeSpace === 'second' ? (user?.secondSpaceUsername ?? 'Second Space User') : user?.username}
+                        </p>
                     </div>
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</p>
-                        <p className="text-md font-bold text-slate-700">{isSecondSpace ? 'Guest' : user?.role}</p>
-                    </div>
+                    {activeSpace !== 'second' && (
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</p>
+                            <p className="text-md font-bold text-slate-700">{user?.role}</p>
+                        </div>
+                    )}
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account ID</p>
-                        <p className="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-tighter">
-                            {isSecondSpace ? '************************' : user?._id}
-                        </p>
+                        <p className="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{user?._id}</p>
                     </div>
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Member Since</p>
-                        <p className="text-md font-bold text-slate-700">{isSecondSpace ? 'N/A' : 'October 2023'}</p>
+                        <p className="text-md font-bold text-slate-700">October 2023</p>
                     </div>
                 </div>
             </div>
@@ -331,32 +336,24 @@ const Profile = () => {
             {isEditModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsEditModalOpen(false)} />
-                    <form onSubmit={handleUpdateUsername} className="relative bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200 border-4 border-indigo-100">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-2xl font-black text-slate-800 italic uppercase tracking-tighter">
-                                {isSecondSpace ? 'Edit Space Profile' : 'Edit Profile'}
-                            </h3>
-                            {isSecondSpace && (
-                                <span className="px-3 py-1 bg-indigo-100 text-indigo-600 text-[10px] font-black rounded-full uppercase">Private Mode</span>
-                            )}
-                        </div>
+                    <form onSubmit={handleUpdateUsername} className="relative bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <h3 className="text-2xl font-black text-slate-800 mb-6 italic uppercase tracking-tighter">Edit Profile</h3>
                         <div className="space-y-4">
                             <div>
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                                    {isSecondSpace ? 'Space Name' : 'Username'}
+                                    {activeSpace === 'second' ? 'Second Space Name' : 'Username'}
                                 </label>
                                 <input
                                     type="text"
-                                    value={newUsername}
-                                    onChange={(e) => setNewUsername(e.target.value)}
+                                    placeholder={activeSpace === 'second' ? 'Enter Second Space Name' : 'Enter Username'}
+                                    value={activeSpace === 'second' ? newSecondSpaceUsername : newUsername}
+                                    onChange={(e) => activeSpace === 'second' ? setNewSecondSpaceUsername(e.target.value) : setNewUsername(e.target.value)}
                                     className="w-full bg-slate-50 border-2 border-slate-100 focus:border-primary-500 rounded-2xl px-5 py-3 outline-none transition-all font-bold text-slate-700"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                                    {isSecondSpace ? 'Space Email' : 'Email Address'}
-                                </label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
                                 <input
                                     type="email"
                                     value={newEmail}
@@ -364,7 +361,6 @@ const Profile = () => {
                                     className="w-full bg-slate-50 border-2 border-slate-100 focus:border-primary-500 rounded-2xl px-5 py-3 outline-none transition-all font-bold text-slate-700"
                                     required
                                 />
-                                {isSecondSpace && <p className="text-[10px] font-bold text-indigo-400 mt-1 ml-1 italic text-right opacity-70">Independent Space Email</p>}
                             </div>
                             <button
                                 type="submit"

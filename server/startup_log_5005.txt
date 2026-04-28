@@ -1,0 +1,17 @@
+◇ injected env (8) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+Server is running on port 5005
+Connected to MongoDB
+GET /api/notifications
+DEBUG: Found 0 notifications for user rakshit
+GET /api/notifications
+DEBUG: Found 0 notifications for user rakshit
+GET /api/notifications
+DEBUG: Found 0 notifications for user rakshit
+GET /api/notifications
+DEBUG: Found 0 notifications for user rakshit
+GET /api/notifications
+DEBUG: Found 0 notifications for user rakshit
+GET /api/notifications
+DEBUG: Found 0 notifications for user rakshit
+^C

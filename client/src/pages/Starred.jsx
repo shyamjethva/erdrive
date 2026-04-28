@@ -13,7 +13,7 @@ import ColorPickerModal from '../components/drive/ColorPickerModal';
 import FolderPasswordModal from '../components/drive/FolderPasswordModal';
 
 const Starred = () => {
-    const { user } = useAuth();
+    const { user, activeSpace } = useAuth();
     const navigate = useNavigate();
     const { searchQuery } = useOutletContext();
     const { showToast } = useToast();
@@ -34,8 +34,8 @@ const Starred = () => {
         setLoading(true);
         try {
             const [foldersRes, filesRes] = await Promise.all([
-                api.get('/folders/starred/all'),
-                api.get('/files/starred/all')
+                api.get(`/folders/starred/all?space=${activeSpace}`),
+                api.get(`/files/starred/all?space=${activeSpace}`)
             ]);
             setStarredFolders(foldersRes.data);
             setStarredFiles(filesRes.data);
@@ -48,7 +48,7 @@ const Starred = () => {
 
     useEffect(() => {
         if (user) fetchData();
-    }, [user]);
+    }, [user, activeSpace]);
 
     const handleContextMenu = (e, item, type) => {
         e.preventDefault();
@@ -63,7 +63,7 @@ const Starred = () => {
     const handleAction = async (action, item, type) => {
         if (action === 'star') {
             try {
-                const endpoint = type === 'folder' ? `/folders/${item._id}/star` : `/files/${item._id}/star`;
+                const endpoint = type === 'folder' ? `/folders/${item._id}/star?space=${activeSpace}` : `/files/${item._id}/star?space=${activeSpace}`;
                 await api.patch(endpoint);
                 // Remove from local state since it's no longer starred
                 if (type === 'folder') {
@@ -77,7 +77,7 @@ const Starred = () => {
         } else if (action === 'delete') {
             if (confirm(`Move ${item.name} to trash?`)) {
                 try {
-                    const endpoint = type === 'folder' ? `/folders/${item._id}/trash` : `/files/${item._id}/trash`;
+                    const endpoint = type === 'folder' ? `/folders/${item._id}/trash?space=${activeSpace}` : `/files/${item._id}/trash?space=${activeSpace}`;
                     await api.patch(endpoint);
                     if (type === 'folder') {
                         setStarredFolders(starredFolders.filter(f => f._id !== item._id));
@@ -92,7 +92,7 @@ const Starred = () => {
             const newName = prompt(`Enter new name for ${item.name}:`, item.name);
             if (newName && newName !== item.name) {
                 try {
-                    const endpoint = type === 'folder' ? `/folders/${item._id}/rename` : `/files/${item._id}/rename`;
+                    const endpoint = type === 'folder' ? `/folders/${item._id}/rename?space=${activeSpace}` : `/files/${item._id}/rename?space=${activeSpace}`;
                     const res = await api.patch(endpoint, { name: newName });
                     if (type === 'folder') {
                         setStarredFolders(starredFolders.map(f => f._id === item._id ? res.data : f));
@@ -107,7 +107,7 @@ const Starred = () => {
         } else if (action === 'download') {
             try {
                 const token = localStorage.getItem('token');
-                const response = await api.get(`/files/download/${item._id}?token=${token}`, {
+                const response = await api.get(`/files/download/${item._id}?token=${token}&space=${activeSpace}`, {
                     responseType: 'blob'
                 });
 

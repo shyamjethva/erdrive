@@ -18,6 +18,7 @@
     "express": "^5.2.1",
     "google-auth-library": "^10.6.2",
     "googleapis": "^171.4.0",
+    "it-company-crm-backend": "file:../../../Error-Infotech/Manav Admin 1/backend",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.4.1",
     "multer": "^2.1.1"

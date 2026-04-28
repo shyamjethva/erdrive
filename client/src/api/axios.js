@@ -6,13 +6,13 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
+    const spaceToken = localStorage.getItem('spaceToken');
+
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
-
-    const isSecondSpace = sessionStorage.getItem('isSecondSpace') === 'true';
-    if (isSecondSpace) {
-        config.headers['x-second-space'] = 'true';
+    if (spaceToken) {
+        config.headers['X-Space-Authorization'] = spaceToken;
     }
     return config;
 });

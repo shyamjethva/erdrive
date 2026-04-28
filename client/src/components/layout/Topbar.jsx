@@ -1,12 +1,13 @@
 import React from 'react';
-import { SearchIcon, BellIcon, FileIcon, FolderIcon, UserIcon, LogOutIcon, SettingsIcon, ShieldCheck } from 'lucide-react';
+import { SearchIcon, BellIcon, FileIcon, FolderIcon, UserIcon, LogOutIcon, SettingsIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../api/axios';
 
 const Topbar = ({ searchQuery, setSearchQuery }) => {
-    const { user, logout, isSecondSpace, activeUsername, activeAvatar } = useAuth();
+    const { user } = useAuth();
     const [notifications, setNotifications] = React.useState([]);
+    const [hasError, setHasError] = React.useState(false);
     const [isNotifOpen, setIsNotifOpen] = React.useState(false);
     const [searchResults, setSearchResults] = React.useState({ files: [], folders: [] });
     const [isSearching, setIsSearching] = React.useState(false);
@@ -15,21 +16,25 @@ const Topbar = ({ searchQuery, setSearchQuery }) => {
     const notifRef = React.useRef(null);
     const profileRef = React.useRef(null);
     const navigate = useNavigate();
+    const { logout, activeSpace } = useAuth();
 
     const fetchNotifications = React.useCallback(async () => {
         try {
             const res = await api.get('/notifications');
             setNotifications(res.data);
+            setHasError(false);
         } catch (err) {
-            console.error('Failed to fetch notifications:', err);
+            setHasError(true);
+            // console.error('Failed to fetch notifications:', err);
         }
     }, []);
 
     React.useEffect(() => {
+        if (hasError) return;
         fetchNotifications();
         const interval = setInterval(fetchNotifications, 5000);
         return () => clearInterval(interval);
-    }, [fetchNotifications]);
+    }, [fetchNotifications, hasError]);
 
     // Click outside to close notification dropdown
     React.useEffect(() => {
@@ -98,81 +103,73 @@ const Topbar = ({ searchQuery, setSearchQuery }) => {
     };
 
     return (
-        <header className={`h-16 flex items-center justify-between px-8 border-b sticky top-0 z-50 transition-colors ${isSecondSpace ? 'bg-purple-50/50 border-purple-100' : 'bg-white border-slate-100'}`}>
-            <div className="flex items-center gap-4 flex-1">
-                {isSecondSpace && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white rounded-xl shadow-lg shadow-purple-200 animate-pulse">
-                        <ShieldCheck size={16} />
-                        <span className="text-xs font-black uppercase tracking-tighter">Second Space Active</span>
+        <header className="h-16 flex items-center justify-between px-8 bg-white border-b sticky top-0 z-50">
+            <div className="flex-1 max-w-2xl relative group">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary-500 transition-colors">
+                    <SearchIcon size={18} />
+                </div>
+                <input
+                    type="text"
+                    placeholder="Search in Drive..."
+                    className="w-full bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 rounded-xl pl-10 pr-4 py-2 text-slate-800 transition-all outline-none"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => searchQuery?.length > 1 && setIsSearchOpen(true)}
+                />
+
+                {/* Search Results Dropdown */}
+                {isSearchOpen && (searchResults.files.length > 0 || searchResults.folders.length > 0 || isSearching) && (
+                    <div
+                        className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2"
+                        onMouseLeave={() => setIsSearchOpen(false)}
+                    >
+                        <div className="max-h-[70vh] overflow-y-auto py-2">
+                            {isSearching ? (
+                                <div className="p-4 text-center text-slate-400 text-sm">Searching...</div>
+                            ) : (
+                                <>
+                                    {searchResults.folders.length > 0 && (
+                                        <div className="px-2 pb-2">
+                                            <p className="px-3 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Folders</p>
+                                            {searchResults.folders.map(folder => (
+                                                <div
+                                                    key={folder._id}
+                                                    className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 cursor-pointer rounded-lg group transition-colors"
+                                                    onClick={() => {
+                                                        // Implement folder navigation if needed, or just close search
+                                                        setIsSearchOpen(false);
+                                                        setSearchQuery('');
+                                                    }}
+                                                >
+                                                    <FolderIcon size={18} className="text-amber-400 fill-amber-400/20" />
+                                                    <span className="text-sm text-slate-700 font-medium group-hover:text-primary-600 truncate">{folder.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {searchResults.files.length > 0 && (
+                                        <div className="px-2">
+                                            <p className="px-3 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Files</p>
+                                            {searchResults.files.map(file => (
+                                                <div
+                                                    key={file._id}
+                                                    className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 cursor-pointer rounded-lg group transition-colors"
+                                                    onClick={() => {
+                                                        setIsSearchOpen(false);
+                                                        setSearchQuery('');
+                                                    }}
+                                                >
+                                                    <FileIcon size={18} className="text-blue-500 fill-blue-500/10" />
+                                                    <span className="text-sm text-slate-700 font-medium group-hover:text-primary-600 truncate">{file.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
                 )}
-                <div className="flex-1 max-w-2xl relative group ml-2">
-                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary-500 transition-colors">
-                        <SearchIcon size={18} />
-                    </div>
-                    <input
-                        type="text"
-                        placeholder="Search in Drive..."
-                        className="w-full bg-slate-100 border-transparent focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 rounded-xl pl-10 pr-4 py-2 text-slate-800 transition-all outline-none"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onFocus={() => searchQuery?.length > 1 && setIsSearchOpen(true)}
-                    />
-
-                    {/* Search Results Dropdown */}
-                    {isSearchOpen && (searchResults.files.length > 0 || searchResults.folders.length > 0 || isSearching) && (
-                        <div
-                            className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2"
-                            onMouseLeave={() => setIsSearchOpen(false)}
-                        >
-                            <div className="max-h-[70vh] overflow-y-auto py-2">
-                                {isSearching ? (
-                                    <div className="p-4 text-center text-slate-400 text-sm">Searching...</div>
-                                ) : (
-                                    <>
-                                        {searchResults.folders.length > 0 && (
-                                            <div className="px-2 pb-2">
-                                                <p className="px-3 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Folders</p>
-                                                {searchResults.folders.map(folder => (
-                                                    <div
-                                                        key={folder._id}
-                                                        className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 cursor-pointer rounded-lg group transition-colors"
-                                                        onClick={() => {
-                                                            // Implement folder navigation if needed, or just close search
-                                                            setIsSearchOpen(false);
-                                                            setSearchQuery('');
-                                                        }}
-                                                    >
-                                                        <FolderIcon size={18} className="text-amber-400 fill-amber-400/20" />
-                                                        <span className="text-sm text-slate-700 font-medium group-hover:text-primary-600 truncate">{folder.name}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        {searchResults.files.length > 0 && (
-                                            <div className="px-2">
-                                                <p className="px-3 py-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Files</p>
-                                                {searchResults.files.map(file => (
-                                                    <div
-                                                        key={file._id}
-                                                        className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 cursor-pointer rounded-lg group transition-colors"
-                                                        onClick={() => {
-                                                            setIsSearchOpen(false);
-                                                            setSearchQuery('');
-                                                        }}
-                                                    >
-                                                        <FileIcon size={18} className="text-blue-500 fill-blue-500/10" />
-                                                        <span className="text-sm text-slate-700 font-medium group-hover:text-primary-600 truncate">{file.name}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
             </div>
 
             <div className="flex items-center gap-4 relative">
@@ -231,17 +228,15 @@ const Topbar = ({ searchQuery, setSearchQuery }) => {
                     >
                         <div className="text-right hidden sm:block">
                             <p className="text-sm font-semibold text-slate-800 leading-none group-hover:text-primary-600 transition-colors">
-                                {activeUsername}
+                                {activeSpace === 'second' ? (user?.secondSpaceUsername ?? 'Second Space User') : user?.username}
                             </p>
-                            <p className="text-[10px] text-slate-400 mt-1 capitalize font-bold uppercase tracking-widest text-right">
-                                {isSecondSpace ? 'Guest Account' : user?.role}
-                            </p>
+                            <p className="text-[10px] text-slate-400 mt-1 capitalize font-bold uppercase tracking-widest">{user?.role}</p>
                         </div>
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ring-2 ring-white shadow-sm ring-offset-2 group-hover:ring-primary-500 transition-all overflow-hidden ${isSecondSpace ? 'bg-indigo-600 text-white' : 'bg-primary-100 text-primary-700'}`}>
-                            {activeAvatar ? (
-                                <img src={`${api.defaults.baseURL.replace('/api', '')}${activeAvatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                        <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold ring-2 ring-white shadow-sm ring-offset-2 group-hover:ring-primary-500 transition-all overflow-hidden">
+                            {user?.avatar ? (
+                                <img src={`${api.defaults.baseURL.replace('/api', '')}${user.avatar}`} alt="Avatar" className="w-full h-full object-cover" />
                             ) : (
-                                <span className="text-lg font-black">{activeUsername?.[0]?.toUpperCase()}</span>
+                                (activeSpace === 'second' ? (user?.secondSpaceUsername?.[0] ?? user?.username?.[0]) : user?.username?.[0])?.toUpperCase()
                             )}
                         </div>
                     </button>
@@ -251,8 +246,11 @@ const Topbar = ({ searchQuery, setSearchQuery }) => {
                             <div className="px-4 py-3 border-b border-slate-50">
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Account</p>
                                 <p className="text-sm font-black text-slate-800 truncate">
-                                    {activeUsername}
+                                    {activeSpace === 'second' ? (user?.secondSpaceUsername ?? 'Second Space User') : user?.username}
                                 </p>
+                                {activeSpace !== 'second' && (
+                                    <p className="text-[10px] text-slate-400 mt-1 capitalize font-bold uppercase">{user?.role}</p>
+                                )}
                             </div>
                             <div className="p-1">
                                 <Link

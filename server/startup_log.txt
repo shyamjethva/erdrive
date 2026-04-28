@@ -1,0 +1,5 @@
+◇ injected env (8) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env // tip: ⌘ enable debugging { debug: true }
+Server is running on port 5000
+Connected to MongoDB
+^C

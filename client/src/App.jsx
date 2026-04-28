@@ -14,18 +14,24 @@ import Recents from './pages/Recents';
 import Spam from './pages/Spam';
 import Storage from './pages/Storage';
 import Profile from './pages/Profile';
+import SecondSpaceAuth from './pages/SecondSpaceAuth';
+import SecondSpaceDashboard from './pages/SecondSpaceDashboard';
+import SpaceTransitionOverlay from './components/layout/SpaceTransitionOverlay';
 
 function App() {
   return (
     <AuthProvider>
       <ToastProvider>
+        <SpaceTransitionOverlay />
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/second-space/auth" element={<ProtectedRoute><SecondSpaceAuth /></ProtectedRoute>} />
 
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route path="/" element={<Dashboard />} />
+                <Route path="/second-space" element={<SecondSpaceDashboard />} />
                 <Route path="/shared" element={<Shared />} />
                 <Route path="/starred" element={<Starred />} />
                 <Route path="/trash" element={<Trash />} />

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import api from '../../api/axios';
 import { XIcon, FolderPlusIcon } from 'lucide-react';
 
-const CreateFolderModal = ({ isOpen, onClose, parentFolderId, onFolderCreated }) => {
+const CreateFolderModal = ({ isOpen, onClose, parentFolderId, space, onFolderCreated }) => {
     const [name, setName] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -16,7 +16,8 @@ const CreateFolderModal = ({ isOpen, onClose, parentFolderId, onFolderCreated })
         try {
             const response = await api.post('/folders', {
                 name,
-                parentFolderId
+                parentFolderId,
+                space
             });
             onFolderCreated(response.data);
             setName('');

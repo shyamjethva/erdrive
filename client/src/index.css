@@ -57,3 +57,42 @@ body {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* Second Space Theme Override */
+.active-space-second {
+  --color-primary-50: #f5f3ff;
+  --color-primary-100: #ede9fe;
+  --color-primary-200: #ddd6fe;
+  --color-primary-300: #c4b5fd;
+  --color-primary-400: #a78bfa;
+  --color-primary-500: #8b5cf6;
+  --color-primary-600: #7c3aed;
+  --color-primary-700: #6d28d9;
+  --color-primary-800: #5b21b6;
+  --color-primary-900: #4c1d95;
+}
+
+.space-transition {
+  transition: background-color 0.5s ease, border-color 0.5s ease, color 0.5s ease;
+}
+
+/* Ensure all elements with primary classes inherit the theme variables */
+.active-space-second .text-primary-600 {
+  color: var(--color-primary-600);
+}
+
+.active-space-second .bg-primary-600 {
+  background-color: var(--color-primary-600);
+}
+
+.active-space-second .border-primary-600 {
+  border-color: var(--color-primary-600);
+}
+
+.active-space-second .from-primary-600 {
+  --tw-gradient-from: var(--color-primary-600) !important;
+}
+
+.active-space-second .to-primary-400 {
+  --tw-gradient-to: var(--color-primary-400) !important;
+}

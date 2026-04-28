@@ -29,8 +29,9 @@ import ShareModal from '../components/drive/ShareModal';
 import ColorPickerModal from '../components/drive/ColorPickerModal';
 
 const Dashboard = () => {
-    const { user } = useAuth();
+    const { user, activeSpace } = useAuth();
     const { searchQuery } = useOutletContext();
+    const effectiveRootId = activeSpace === 'main' ? user?.rootFolderId : user?.secondSpaceRootId;
     const { showToast } = useToast();
     const [currentFolderId, setCurrentFolderId] = useState('root');
     const [folders, setFolders] = useState([]);
@@ -53,24 +54,35 @@ const Dashboard = () => {
 
     const fetchData = async (folderId) => {
         setLoading(true);
+        setFolders([]);
+        setFiles([]);
         try {
-            const foldersRes = await api.get(`/folders/parent/${folderId}`);
-            const filesRes = await api.get(`/files/folder/${folderId}`);
+            const actualFolderId = folderId === 'root' ? effectiveRootId : folderId;
+
+            if (!actualFolderId) {
+                setLoading(false);
+                return;
+            }
+
+            const foldersRes = await api.get(`/folders/parent/${actualFolderId}?space=${activeSpace}`);
+            const filesRes = await api.get(`/files/folder/${actualFolderId}?space=${activeSpace}`);
 
             setFolders(foldersRes.data);
             setFiles(filesRes.data);
 
             // Fetch recent files only on root
-            if (folderId === 'root') {
-                const recentRes = await api.get('/files/recent');
+            if (folderId === 'root' || folderId === effectiveRootId) {
+                const recentRes = await api.get(`/files/recent?space=${activeSpace}`);
+                // Filter recents to only show files in the current space (optional, but good for isolation)
+                // For now, we'll just show them, but filtering by parent trail would be better
                 setRecentFiles(recentRes.data);
             }
 
             // Fetch folder breadcrumbs/trail
-            if (folderId === 'root') {
+            if (folderId === 'root' || folderId === effectiveRootId) {
                 setPath([]);
             } else {
-                const trailRes = await api.get(`/folders/${folderId}/trail`);
+                const trailRes = await api.get(`/folders/${actualFolderId}/trail`);
                 setPath(trailRes.data);
             }
         } catch (error) {
@@ -82,7 +94,11 @@ const Dashboard = () => {
 
     useEffect(() => {
         if (user) fetchData(currentFolderId);
-    }, [currentFolderId, user]);
+    }, [currentFolderId, user, activeSpace]);
+
+    useEffect(() => {
+        setCurrentFolderId('root');
+    }, [activeSpace]);
 
     const handleNavigate = (folderOrId) => {
         const id = typeof folderOrId === 'string' ? folderOrId : folderOrId?._id;
@@ -154,7 +170,7 @@ const Dashboard = () => {
         if (action === 'delete') {
             if (confirm(`Move ${item.name} to trash?`)) {
                 try {
-                    const endpoint = type === 'folder' ? `/folders/${item._id}/trash` : `/files/${item._id}/trash`;
+                    const endpoint = type === 'folder' ? `/folders/${item._id}/trash?space=${activeSpace}` : `/files/${item._id}/trash?space=${activeSpace}`;
                     await api.patch(endpoint);
                     if (type === 'folder') {
                         setFolders(folders.filter(f => f._id !== item._id));
@@ -170,7 +186,7 @@ const Dashboard = () => {
             const newName = prompt(`Enter new name for ${item.name}:`, item.name);
             if (newName && newName !== item.name) {
                 try {
-                    const endpoint = type === 'folder' ? `/folders/${item._id}/rename` : `/files/${item._id}/rename`;
+                    const endpoint = type === 'folder' ? `/folders/${item._id}/rename?space=${activeSpace}` : `/files/${item._id}/rename?space=${activeSpace}`;
                     const res = await api.patch(endpoint, { name: newName });
                     if (type === 'folder') {
                         setFolders(folders.map(f => f._id === item._id ? res.data : f));
@@ -186,7 +202,7 @@ const Dashboard = () => {
         } else if (action === 'download') {
             try {
                 const token = localStorage.getItem('token');
-                const response = await api.get(`/files/download/${item._id}?token=${token}`, {
+                const response = await api.get(`/files/download/${item._id}?token=${token}&space=${activeSpace}`, {
                     responseType: 'blob'
                 });
 
@@ -219,7 +235,7 @@ const Dashboard = () => {
             setColorPickerItem(item);
         } else if (action === 'star') {
             try {
-                const endpoint = type === 'folder' ? `/folders/${item._id}/star` : `/files/${item._id}/star`;
+                const endpoint = type === 'folder' ? `/folders/${item._id}/star?space=${activeSpace}` : `/files/${item._id}/star?space=${activeSpace}`;
                 const res = await api.patch(endpoint);
                 if (type === 'folder') {
                     setFolders(folders.map(f => f._id === item._id ? res.data : f));
@@ -234,7 +250,7 @@ const Dashboard = () => {
             }
         } else if (action === 'pin') {
             try {
-                const endpoint = type === 'folder' ? `/folders/${item._id}/pin` : `/files/${item._id}/pin`;
+                const endpoint = type === 'folder' ? `/folders/${item._id}/pin?space=${activeSpace}` : `/files/${item._id}/pin?space=${activeSpace}`;
                 const res = await api.patch(endpoint);
                 if (type === 'folder') {
                     setFolders(prev => {
@@ -285,7 +301,9 @@ const Dashboard = () => {
     return (
         <div className="space-y-6" onClick={() => { setContextMenu(null); setIsNewMenuOpen(false); }}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">My Drive</h1>
+                <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
+                    {activeSpace === 'main' ? 'My Drive' : 'Second Space'}
+                </h1>
 
                 <div className="flex items-center gap-2">
                     {/* New Button with Dropdown */}
@@ -418,7 +436,8 @@ const Dashboard = () => {
             <Breadcrumbs path={path} onNavigate={handleNavigate} />
 
             <FileUploadZone
-                folderId={currentFolderId === 'root' ? user.rootFolderId : currentFolderId}
+                folderId={currentFolderId === 'root' ? effectiveRootId : currentFolderId}
+                space={activeSpace}
                 onUploadSuccess={handleUploadSuccess}
             >
                 {loading ? (
@@ -515,7 +534,8 @@ const Dashboard = () => {
             <CreateFolderModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
-                parentId={currentFolderId === 'root' ? user.rootFolderId : currentFolderId}
+                parentFolderId={currentFolderId === 'root' ? effectiveRootId : currentFolderId}
+                space={activeSpace}
                 onFolderCreated={handleFolderCreated}
             />
 

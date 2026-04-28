@@ -41,7 +41,7 @@ const FolderCard = ({ folder, onClick, onContextMenu, viewMode = 'grid' }) => {
     };
 
     if (viewMode === 'list') {
-        const { user, activeUsername, activeAvatar } = useAuth();
+        const { user } = useAuth();
         const apiBase = api.defaults.baseURL.replace('/api', '');
         const ownerName = folder.ownerId?.username || 'Unknown';
         const ownerIdStr = folder.ownerId?._id || folder.ownerId;
@@ -75,18 +75,10 @@ const FolderCard = ({ folder, onClick, onContextMenu, viewMode = 'grid' }) => {
                 {/* Owner Column */}
                 <div className="w-48 hidden md:flex items-center gap-2 shrink-0">
                     <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden border border-white shadow-sm">
-                        {isMe ? (
-                            activeAvatar ? (
-                                <img src={`${apiBase}${activeAvatar}`} alt={activeUsername} className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-[10px] font-bold text-slate-500 uppercase">{activeUsername[0]}</span>
-                            )
+                        {folder.ownerId?.avatar ? (
+                            <img src={`${apiBase}${folder.ownerId.avatar}`} alt={ownerName} className="w-full h-full object-cover" />
                         ) : (
-                            folder.ownerId?.avatar ? (
-                                <img src={`${apiBase}${folder.ownerId.avatar}`} alt={ownerName} className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-[10px] font-bold text-slate-500 uppercase">{ownerName[0]}</span>
-                            )
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">{ownerName[0]}</span>
                         )}
                     </div>
                     <span className="text-sm text-slate-600 font-medium">{isMe ? 'me' : ownerName}</span>

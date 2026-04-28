@@ -4,8 +4,10 @@ import { Trash2Icon, RefreshCcwIcon } from 'lucide-react';
 import FolderCard from '../components/drive/FolderCard';
 import FileCard from '../components/drive/FileCard';
 import ContextMenu from '../components/drive/ContextMenu';
+import { useAuth } from '../context/AuthContext';
 
 const Trash = () => {
+    const { user, activeSpace } = useAuth();
     const [folders, setFolders] = useState([]);
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -15,8 +17,8 @@ const Trash = () => {
         setLoading(true);
         try {
             const [foldersRes, filesRes] = await Promise.all([
-                api.get('/folders/trash'),
-                api.get('/files/trash')
+                api.get(`/folders/trash?space=${activeSpace}`),
+                api.get(`/files/trash?space=${activeSpace}`)
             ]);
             setFolders(foldersRes.data);
             setFiles(filesRes.data);
@@ -29,7 +31,7 @@ const Trash = () => {
 
     useEffect(() => {
         fetchTrash();
-    }, []);
+    }, [activeSpace]);
 
     const handleContextMenu = (e, item, type) => {
         e.preventDefault();
@@ -72,8 +74,8 @@ const Trash = () => {
             try {
                 setLoading(true);
                 await Promise.all([
-                    api.post('/folders/empty-trash'),
-                    api.post('/files/empty-trash')
+                    api.post(`/folders/empty-trash?space=${activeSpace}`),
+                    api.post(`/files/empty-trash?space=${activeSpace}`)
                 ]);
                 setFolders([]);
                 setFiles([]);

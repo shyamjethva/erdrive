@@ -4,8 +4,20 @@ import File from '../models/File.js';
 import User from '../models/User.js';
 import Notification from '../models/Notification.js';
 import { auth } from '../middleware/auth.js';
+import { checkSpaceAuth } from '../middleware/spaceAuth.js';
 import { storageService } from '../services/storage.js';
 import { googleDriveService } from '../services/googleDrive.js';
+
+const ensureSpaceAuth = (req, res, next) => {
+    const query = req.query || {};
+    const body = req.body || {};
+    const spaceType = query.space || body.space || query.spaceType || body.spaceType;
+
+    if (spaceType === 'second') {
+        return checkSpaceAuth(req, res, next);
+    }
+    next();
+};
 
 import bcrypt from 'bcryptjs';
 const router = express.Router();
@@ -98,15 +110,11 @@ router.post('/:id/remove-lock', auth, async (req, res) => {
 });
 
 // Get starred folders
-router.get('/starred/all', auth, async (req, res) => {
+router.get('/starred/all', auth, ensureSpaceAuth, async (req, res) => {
     try {
-        const isSecondSpace = req.headers['x-second-space'] === 'true';
-        const folders = await Folder.find({
-            ownerId: req.user._id,
-            isStarred: true,
-            isTrash: false,
-            isSecondSpace
-        }).populate('ownerId', 'username avatar');
+        const { space: spaceType = 'main' } = req.query;
+        const folders = await Folder.find({ ownerId: req.user._id, isStarred: true, isTrash: false, spaceType })
+            .populate('ownerId', 'username avatar');
         res.send(folders);
     } catch (error) {
         res.status(500).send(error);
@@ -170,71 +178,118 @@ router.patch('/:id/pin', auth, async (req, res) => {
 });
 
 // Create folder
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, ensureSpaceAuth, async (req, res) => {
     try {
-        const { name, parentFolderId } = req.body;
-        const isSecondSpaceHeader = req.headers['x-second-space'] === 'true';
+        const { name, parentFolderId, space: bodySpace } = req.body;
 
         let parentDriveFolderId = null;
-        let isSecondSpace = isSecondSpaceHeader;
+        let folderSpaceType = 'main';
 
         if (parentFolderId && parentFolderId !== 'root') {
-            const parentFolder = await Folder.findById(parentFolderId);
-            if (parentFolder) {
-                parentDriveFolderId = parentFolder.driveFolderId;
-                isSecondSpace = parentFolder.isSecondSpace;
+            const isSecondRoot = req.user.secondSpaceRootId && parentFolderId.toString() === req.user.secondSpaceRootId.toString();
+
+            if (isSecondRoot) {
+                folderSpaceType = 'second';
+            } else {
+                const parentFolder = await Folder.findById(parentFolderId);
+                if (parentFolder) {
+                    parentDriveFolderId = parentFolder.driveFolderId;
+                    folderSpaceType = parentFolder.spaceType;
+                }
             }
         } else {
-            // Creating in root
-            if (isSecondSpaceHeader) {
-                const ssRoot = await Folder.findById(req.user.secondSpaceRootFolderId);
-                parentDriveFolderId = ssRoot?.driveFolderId;
-            } else {
-                parentDriveFolderId = process.env.GOOGLE_DRIVE_PARENT_ID;
-            }
+            folderSpaceType = bodySpace || 'main';
         }
 
         const driveFolderId = await storageService.createFolder(name, parentDriveFolderId);
 
+        const effectiveParentId = (parentFolderId === 'root' || !parentFolderId)
+            ? (folderSpaceType === 'second' ? req.user.secondSpaceRootId : req.user.rootFolderId)
+            : parentFolderId;
+
         const folder = new Folder({
             name,
-            parentFolderId: (parentFolderId === 'root' || !parentFolderId) ? null : parentFolderId,
+            parentFolderId: effectiveParentId,
             ownerId: req.user._id,
             driveFolderId,
-            isSecondSpace
+            spaceType: folderSpaceType
         });
         await folder.save();
         res.status(201).send(folder);
     } catch (error) {
-        console.error('Folder Creation Error:', error);
         res.status(400).send(error);
     }
 });
 
 // Get folders inside a folder
-router.get('/parent/:parentFolderId', auth, async (req, res) => {
+router.get('/parent/:parentFolderId', auth, ensureSpaceAuth, async (req, res) => {
     try {
-        const isSecondSpace = req.headers['x-second-space'] === 'true';
-        const normalRootId = req.user.rootFolderId?.toString();
-        const secondRootId = req.user.secondSpaceRootFolderId?.toString();
+        const { space: spaceType = 'main' } = req.query;
+        let effectiveParentId = req.params.parentFolderId;
+        if (effectiveParentId === 'root' && spaceType === 'second') {
+            effectiveParentId = req.user.secondSpaceRootId;
+        }
 
-        const isRoot = req.params.parentFolderId === 'root' ||
-            req.params.parentFolderId === normalRootId ||
-            req.params.parentFolderId === secondRootId;
+        const isExplicitRoot = effectiveParentId === 'root' || !effectiveParentId;
 
-        const effectiveParentId = isRoot ? (isSecondSpace ? secondRootId : normalRootId) : req.params.parentFolderId;
+        const isVirtualMainRoot = req.user.rootFolderId && effectiveParentId?.toString() === req.user.rootFolderId.toString();
+        const isVirtualSecondRoot = req.user.secondSpaceRootId && effectiveParentId?.toString() === req.user.secondSpaceRootId.toString();
+        const isVirtualRoot = isVirtualMainRoot || isVirtualSecondRoot;
 
-        const query = {
-            parentFolderId: isRoot ? null : effectiveParentId,
-            isTrash: false,
-            isSecondSpace
-        };
+        const query = { isTrash: false };
 
-        if (isRoot) {
+        if (spaceType === 'second' || isVirtualSecondRoot) {
+            if (isExplicitRoot || isVirtualSecondRoot) {
+                // Root level Second Space: Inclusive fetching
+                query.$or = [
+                    { spaceType: 'second' },
+                    { parentFolderId: req.user.secondSpaceRootId }
+                ];
+                query.ownerId = req.user._id;
+                // Don't show the root folder itself in the list
+                if (req.user.secondSpaceRootId) {
+                    query._id = { $ne: req.user.secondSpaceRootId };
+                }
+            } else {
+                // Strict subfolder navigation
+                query.parentFolderId = effectiveParentId;
+                query.spaceType = 'second';
+            }
+        } else {
+            // Main space
+            if (isExplicitRoot || isVirtualMainRoot) {
+                // Root level Main Drive: Items with no parent or specifically tagged
+                query.parentFolderId = { $in: [null, req.user.rootFolderId] };
+                if (req.user.secondSpaceRootId) {
+                    query.parentFolderId.$ne = req.user.secondSpaceRootId;
+                }
+                query.$or = [
+                    { spaceType: 'main' },
+                    { spaceType: 'primary' },
+                    { spaceType: { $exists: false } }
+                ];
+                query.ownerId = req.user._id;
+
+                // Don't show the main root folder itself in the list
+                if (req.user.rootFolderId) {
+                    query._id = { $ne: req.user.rootFolderId };
+                }
+            } else {
+                // Strict subfolder navigation
+                query.parentFolderId = effectiveParentId;
+                query.$or = [
+                    { spaceType: 'main' },
+                    { spaceType: 'primary' },
+                    { spaceType: { $exists: false } }
+                ];
+            }
+        }
+
+        if (isExplicitRoot || isVirtualRoot) {
             query.ownerId = req.user._id;
         } else {
             const parentFolder = await Folder.findById(req.params.parentFolderId);
-            if (!parentFolder) return res.status(404).send();
+            if (!parentFolder) return res.status(404).send({ error: 'Folder not found' });
 
             const isOwner = parentFolder.ownerId.toString() === req.user._id.toString();
             const isShared = (parentFolder.sharedWith || []).some(id => id.toString() === req.user._id.toString());
@@ -256,11 +311,11 @@ router.get('/parent/:parentFolderId', auth, async (req, res) => {
 // Get trashed folders — MUST be before /:id routes
 router.get('/trash', auth, async (req, res) => {
     try {
-        const isSecondSpace = req.headers['x-second-space'] === 'true';
+        const { space: spaceType = 'main' } = req.query;
         const query = {
             ownerId: req.user._id,
             isTrash: true,
-            isSecondSpace
+            spaceType
         };
         const folders = await Folder.find(query);
         res.send(folders);
@@ -393,7 +448,8 @@ router.delete('/:id', auth, async (req, res) => {
 // Empty trash (Folders)
 router.post('/empty-trash', auth, async (req, res) => {
     try {
-        const deletedFolders = await Folder.deleteMany({ ownerId: req.user._id, isTrash: true });
+        const { space: spaceType = 'main' } = req.query;
+        const deletedFolders = await Folder.deleteMany({ ownerId: req.user._id, isTrash: true, spaceType });
         res.send(deletedFolders);
     } catch (error) {
         res.status(500).send(error);
@@ -445,7 +501,8 @@ router.post('/:id/share', auth, async (req, res) => {
 // Get folders shared with me
 router.get('/shared/all', auth, async (req, res) => {
     try {
-        const folders = await Folder.find({ sharedWith: req.user._id, isTrash: false })
+        const { space: spaceType = 'main' } = req.query;
+        const folders = await Folder.find({ sharedWith: req.user._id, isTrash: false, spaceType })
             .populate('ownerId', 'username avatar');
         res.send(folders);
     } catch (error) {
@@ -456,14 +513,13 @@ router.get('/shared/all', auth, async (req, res) => {
 // Search folders
 router.get('/search', auth, async (req, res) => {
     try {
-        const { q } = req.query;
+        const { q, space: spaceType = 'main' } = req.query;
         if (!q) return res.send([]);
 
-        const isSecondSpace = req.headers['x-second-space'] === 'true';
         const query = {
             name: { $regex: q, $options: 'i' },
             isTrash: false,
-            isSecondSpace
+            spaceType
         };
 
         if (req.user.role !== 'Admin') {

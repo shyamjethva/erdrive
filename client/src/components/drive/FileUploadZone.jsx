@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import api from '../../api/axios';
 import { UploadCloudIcon, Loader2Icon } from 'lucide-react';
 
-const FileUploadZone = ({ folderId, onUploadSuccess, children }) => {
+const FileUploadZone = ({ folderId, space, onUploadSuccess, children }) => {
     const [uploading, setUploading] = useState(false);
     const [progress, setProgress] = useState(0);
 
@@ -11,7 +11,7 @@ const FileUploadZone = ({ folderId, onUploadSuccess, children }) => {
         if (acceptedFiles.length === 0) return;
 
         setUploading(true);
-        if (!folderId || folderId === 'root' || folderId === 'undefined') {
+        if (!folderId || folderId === 'undefined') {
             console.error('Invalid folderId for upload:', folderId);
             setUploading(false);
             return;
@@ -19,6 +19,7 @@ const FileUploadZone = ({ folderId, onUploadSuccess, children }) => {
 
         const formData = new FormData();
         formData.append('folderId', folderId);
+        formData.append('space', space);
         acceptedFiles.forEach(file => {
             formData.append('files', file);
             // Include path if it's a folder upload

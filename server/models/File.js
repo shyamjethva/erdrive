@@ -48,10 +48,10 @@ const fileSchema = new mongoose.Schema({
         type: String,
         default: null
     },
-    isSecondSpace: {
-        type: Boolean,
-        default: false,
-        index: true
+    spaceType: {
+        type: String,
+        enum: ['main', 'second'],
+        default: 'main'
     }
 }, {
     timestamps: true,
@@ -60,20 +60,7 @@ const fileSchema = new mongoose.Schema({
 });
 
 fileSchema.virtual('previewUrl').get(function () {
-    if (!this.storagePath) return null;
-
-    // If it's a Drive link, return it directly
-    if (this.storagePath.startsWith('http')) {
-        return this.storagePath;
-    }
-
-    // Extract the part after 'storage' to use with the static route
-    const parts = this.storagePath.split('storage');
-    if (parts.length < 2) return null;
-    let url = parts[1].replace(/\\/g, '/');
-    // Ensure it starts with /
-    if (!url.startsWith('/')) url = '/' + url;
-    return url;
+    return `/api/files/view/${this._id}`;
 });
 
 export default mongoose.model('File', fileSchema);

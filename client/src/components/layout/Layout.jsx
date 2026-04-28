@@ -2,12 +2,14 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import { useAuth } from '../../context/AuthContext';
 
 const Layout = () => {
+    const { activeSpace } = useAuth();
     const [searchQuery, setSearchQuery] = React.useState('');
 
     return (
-        <div className="flex h-screen w-full overflow-hidden bg-slate-50">
+        <div className={`flex h-screen w-full overflow-hidden bg-slate-50 space-transition active-space-${activeSpace}`}>
             <Sidebar />
             <div className="flex-1 flex flex-col relative overflow-hidden">
                 <Topbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />

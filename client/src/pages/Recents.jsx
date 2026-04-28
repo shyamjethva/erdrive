@@ -10,8 +10,8 @@ import ShareModal from '../components/drive/ShareModal';
 import { useOutletContext } from 'react-router-dom';
 
 const Recents = () => {
+    const { user, activeSpace } = useAuth();
     const { searchQuery } = useOutletContext();
-    const { user } = useAuth();
     const { showToast } = useToast();
     const [recentFiles, setRecentFiles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -23,7 +23,7 @@ const Recents = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/files/recent');
+            const res = await api.get(`/files/recent?space=${activeSpace}`);
             // Backend /files/recent returns 10 files
             setRecentFiles(res.data);
         } catch (error) {
@@ -34,8 +34,8 @@ const Recents = () => {
     };
 
     useEffect(() => {
-        if (user) fetchData();
-    }, [user]);
+        fetchData();
+    }, [activeSpace]);
 
     const handleContextMenu = (e, item, type) => {
         e.preventDefault();
@@ -51,7 +51,7 @@ const Recents = () => {
         if (action === 'download') {
             try {
                 const token = localStorage.getItem('token');
-                const response = await api.get(`/files/download/${item._id}?token=${token}`, {
+                const response = await api.get(`/files/download/${item._id}?token=${token}&space=${activeSpace}`, {
                     responseType: 'blob'
                 });
 
@@ -81,7 +81,7 @@ const Recents = () => {
             setIsShareModalOpen(true);
         } else if (action === 'star') {
             try {
-                const endpoint = type === 'folder' ? `/folders/${item._id}/star` : `/files/${item._id}/star`;
+                const endpoint = type === 'folder' ? `/folders/${item._id}/star?space=${activeSpace}` : `/files/${item._id}/star?space=${activeSpace}`;
                 const res = await api.patch(endpoint);
                 setRecentFiles(recentFiles.map(f => f._id === item._id ? { ...f, isStarred: res.data.isStarred } : f));
             } catch (err) {
@@ -90,7 +90,7 @@ const Recents = () => {
         } else if (action === 'delete') {
             if (confirm(`Move ${item.name} to trash?`)) {
                 try {
-                    const endpoint = type === 'folder' ? `/folders/${item._id}/trash` : `/files/${item._id}/trash`;
+                    const endpoint = type === 'folder' ? `/folders/${item._id}/trash?space=${activeSpace}` : `/files/${item._id}/trash?space=${activeSpace}`;
                     await api.patch(endpoint);
                     setRecentFiles(recentFiles.filter(f => f._id !== item._id));
                 } catch (err) {
@@ -101,7 +101,7 @@ const Recents = () => {
             const newName = prompt(`Enter new name for ${item.name}:`, item.name);
             if (newName && newName !== item.name) {
                 try {
-                    const endpoint = type === 'folder' ? `/folders/${item._id}/rename` : `/files/${item._id}/rename`;
+                    const endpoint = type === 'folder' ? `/folders/${item._id}/rename?space=${activeSpace}` : `/files/${item._id}/rename?space=${activeSpace}`;
                     const res = await api.patch(endpoint, { name: newName });
                     setRecentFiles(recentFiles.map(f => f._id === item._id ? { ...f, name: res.data.name } : f));
                 } catch (err) {

@@ -10,7 +10,6 @@ import fileRoutes from './routes/file.js';
 import folderRoutes from './routes/folder.js';
 import notificationRoutes from './routes/notification.js';
 import adminRoutes from './routes/admin.js';
-import userRoutes from './routes/user.js';
 
 dotenv.config();
 
@@ -35,7 +34,6 @@ app.use('/api/files', fileRoutes);
 app.use('/api/folders', folderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/users', userRoutes);
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/google_drive_clone')

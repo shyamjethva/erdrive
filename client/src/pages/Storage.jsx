@@ -19,7 +19,7 @@ import FilePreviewModal from '../components/drive/FilePreviewModal';
 import ShareModal from '../components/drive/ShareModal';
 
 const Storage = () => {
-    const { user } = useAuth();
+    const { user, activeSpace } = useAuth();
     const { searchQuery } = useOutletContext();
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ const Storage = () => {
         if (action === 'download') {
             try {
                 const token = localStorage.getItem('token');
-                const response = await api.get(`/files/download/${item._id}?token=${token}`, {
+                const response = await api.get(`/files/download/${item._id}?token=${token}&space=${activeSpace}`, {
                     responseType: 'blob'
                 });
 
@@ -62,7 +62,7 @@ const Storage = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await api.get('/files/storage/all');
+            const res = await api.get(`/files/storage/all?space=${activeSpace}`);
             setFiles(res.data);
         } catch (error) {
             console.error('Error fetching storage data:', error);
@@ -73,7 +73,7 @@ const Storage = () => {
 
     useEffect(() => {
         if (user) fetchData();
-    }, [user]);
+    }, [user, activeSpace]);
 
     const formatBytes = (bytes) => {
         if (!bytes || bytes === 0) return '0 Bytes';
@@ -94,7 +94,7 @@ const Storage = () => {
         f.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const storagePercentage = (user?.storageUsed / user?.storageLimit * 100) || 0;
+    const storagePercentage = user?.storageLimit > 0 ? (user?.storageUsed / user?.storageLimit * 100) : 0;
     const remainingStorage = user?.storageLimit - user?.storageUsed;
 
     return (
@@ -103,8 +103,8 @@ const Storage = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                     <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-                        <div className="p-2 bg-indigo-50 rounded-2xl border border-indigo-100">
-                            <DatabaseIcon className="text-indigo-600" size={28} />
+                        <div className="p-2 bg-primary-50 rounded-2xl border border-primary-100">
+                            <DatabaseIcon className="text-primary-600" size={28} />
                         </div>
                         Storage
                     </h1>
@@ -117,11 +117,11 @@ const Storage = () => {
                 {/* Main Progress Card */}
                 <div className="glass p-8 rounded-[2.5rem] border-2 border-white shadow-xl bg-white/60 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <HardDriveIcon size={120} className="text-indigo-600" />
+                        <HardDriveIcon size={120} className="text-primary-600" />
                     </div>
 
                     <div className="flex items-center gap-4 mb-8">
-                        <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-200">
+                        <div className="p-3 bg-primary-600 rounded-2xl text-white shadow-lg shadow-primary-200">
                             <DatabaseIcon size={24} />
                         </div>
                         <div>
@@ -134,13 +134,13 @@ const Storage = () => {
                         <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
                             <div
                                 className={`h-full transition-all duration-1000 ease-out rounded-full ${storagePercentage > 90 ? 'bg-rose-500' :
-                                    storagePercentage > 70 ? 'bg-amber-500' : 'bg-indigo-600'
+                                    storagePercentage > 70 ? 'bg-amber-500' : 'bg-primary-600'
                                     }`}
                                 style={{ width: `${storagePercentage}%` }}
                             />
                         </div>
                         <div className="flex justify-between items-center text-sm font-black italic">
-                            <span className={storagePercentage > 90 ? 'text-rose-600' : 'text-indigo-600'}>{storagePercentage.toFixed(1)}% used</span>
+                            <span className={storagePercentage > 90 ? 'text-rose-600' : 'text-primary-600'}>{storagePercentage.toFixed(1)}% used</span>
                             <span className="text-slate-400">{formatBytes(remainingStorage)} free</span>
                         </div>
                     </div>
@@ -162,9 +162,9 @@ const Storage = () => {
 
                 <div className="flex items-center justify-between px-4 py-3 border-b-2 border-slate-100/50 mb-2">
                     <span className="text-sm font-bold text-slate-400">Name</span>
-                    <div className="flex items-center gap-2 text-indigo-600">
+                    <div className="flex items-center gap-2 text-primary-600">
                         <span className="text-sm font-bold">Storage used</span>
-                        <div className="p-1 bg-indigo-100 rounded-md">
+                        <div className="p-1 bg-primary-100 rounded-md">
                             <SearchIcon size={14} className="rotate-90" />
                         </div>
                     </div>
@@ -211,7 +211,7 @@ const Storage = () => {
                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <button
                                             onClick={(e) => { e.stopPropagation(); handleAction('download', file); }}
-                                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl transition-all"
+                                            className="p-2 text-slate-400 hover:text-primary-600 hover:bg-white rounded-xl transition-all"
                                             title="Download"
                                         >
                                             <DownloadIcon size={18} />

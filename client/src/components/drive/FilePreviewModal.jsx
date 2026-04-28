@@ -11,9 +11,9 @@ const FilePreviewModal = ({ file, onClose }) => {
     const isImage = file.mimetype.startsWith('image/');
     const isPDF = file.mimetype.includes('pdf');
 
-    // Construct storage URL - assuming storage route is unprotected or handled by a proxy
-    const ownerId = file.ownerId?._id || file.ownerId;
-    const fileStorageUrl = `${apiBase}/storage/${ownerId}/${file.storagePath.split('\\').pop().split('/').pop()}`;
+    // Construct storage URL via backend proxy
+    const fileStorageUrl = `${apiBase}${file.previewUrl}?token=${token}`;
+
     const downloadUrl = `${apiBase}/api/files/download/${file._id}?token=${token}`;
 
     return (
