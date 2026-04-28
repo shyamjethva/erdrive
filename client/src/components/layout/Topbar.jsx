@@ -21,7 +21,7 @@ const Topbar = ({ searchQuery, setSearchQuery }) => {
     const fetchNotifications = React.useCallback(async () => {
         try {
             const res = await api.get('/notifications');
-            setNotifications(res.data);
+            setNotifications(Array.isArray(res.data) ? res.data : []);
             setHasError(false);
         } catch (err) {
             setHasError(true);
@@ -91,7 +91,7 @@ const Topbar = ({ searchQuery, setSearchQuery }) => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const unreadCount = notifications.filter(n => !n.isRead).length;
+    const unreadCount = Array.isArray(notifications) ? notifications.filter(n => !n.isRead).length : 0;
 
     const markAsRead = async (id) => {
         try {

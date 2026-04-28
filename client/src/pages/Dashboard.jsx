@@ -67,15 +67,15 @@ const Dashboard = () => {
             const foldersRes = await api.get(`/folders/parent/${actualFolderId}?space=${activeSpace}`);
             const filesRes = await api.get(`/files/folder/${actualFolderId}?space=${activeSpace}`);
 
-            setFolders(foldersRes.data);
-            setFiles(filesRes.data);
+            setFolders(Array.isArray(foldersRes.data) ? foldersRes.data : []);
+            setFiles(Array.isArray(filesRes.data) ? filesRes.data : []);
 
             // Fetch recent files only on root
             if (folderId === 'root' || folderId === effectiveRootId) {
                 const recentRes = await api.get(`/files/recent?space=${activeSpace}`);
                 // Filter recents to only show files in the current space (optional, but good for isolation)
                 // For now, we'll just show them, but filtering by parent trail would be better
-                setRecentFiles(recentRes.data);
+                setRecentFiles(Array.isArray(recentRes.data) ? recentRes.data : []);
             }
 
             // Fetch folder breadcrumbs/trail
@@ -83,7 +83,7 @@ const Dashboard = () => {
                 setPath([]);
             } else {
                 const trailRes = await api.get(`/folders/${actualFolderId}/trail`);
-                setPath(trailRes.data);
+                setPath(Array.isArray(trailRes.data) ? trailRes.data : []);
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -295,8 +295,8 @@ const Dashboard = () => {
         fetchData(currentFolderId);
     };
 
-    const filteredFolders = folders.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    const filteredFiles = files.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const filteredFolders = (Array.isArray(folders) ? folders : []).filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const filteredFiles = (Array.isArray(files) ? files : []).filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return (
         <div className="space-y-6" onClick={() => { setContextMenu(null); setIsNewMenuOpen(false); }}>
