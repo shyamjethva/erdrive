@@ -15,12 +15,21 @@ const Login = () => {
         e.preventDefault();
         setIsSubmitting(true);
         setError('');
+        
+        // Show message if it takes a long time (likely spinning up a cold server)
+        const timeoutId = setTimeout(() => {
+            setError('Server is waking up. This may take up to 50 seconds...');
+        }, 5000);
+
         try {
             await login(username, password);
+            clearTimeout(timeoutId);
             navigate('/');
         } catch (err) {
+            clearTimeout(timeoutId);
             setError(err.response?.data?.error || 'Failed to login. Please check credentials.');
         } finally {
+            clearTimeout(timeoutId);
             setIsSubmitting(false);
         }
     };

@@ -40,9 +40,14 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/google_dr
     .then(() => console.log('Connected to MongoDB'))
     .catch(err => console.error('MongoDB connection error:', err));
 
-// Basic Route
+// Basic Route and Ping Endpoint
 app.get('/', (req, res) => {
     res.send('Google Drive Clone API is running');
+});
+
+// Ping endpoint to keep free-tier servers awake
+app.get('/api/ping', (req, res) => {
+    res.status(200).send('pong');
 });
 
 // Start Server

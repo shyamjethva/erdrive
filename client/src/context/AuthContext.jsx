@@ -16,18 +16,7 @@ export const AuthProvider = ({ children }) => {
             const storedSpace = localStorage.getItem('activeSpace');
             const storedSpaceToken = localStorage.getItem('spaceToken');
 
-            if (token) {
-                try {
-                    // Fetch latest user data from server on refresh
-                    const response = await api.get('/auth/me');
-                    const latestUser = response.data;
-                    setUser(latestUser);
-                    localStorage.setItem('user', JSON.stringify(latestUser));
-                } catch (err) {
-                    // console.error('Failed to fetch user profile:', err);
-                    if (storedUser) setUser(JSON.parse(storedUser));
-                }
-            } else if (storedUser) {
+            if (storedUser) {
                 setUser(JSON.parse(storedUser));
             }
 
@@ -41,7 +30,27 @@ export const AuthProvider = ({ children }) => {
             if (storedSpaceToken) {
                 setSpaceToken(storedSpaceToken);
             }
-            setLoading(false);
+
+            // Immediately stop loading if we have cached data or no token
+            if (storedUser || !token) {
+                setLoading(false);
+            }
+
+            if (token) {
+                try {
+                    // Fetch latest user data from server on refresh in background
+                    const response = await api.get('/auth/me');
+                    const latestUser = response.data;
+                    setUser(latestUser);
+                    localStorage.setItem('user', JSON.stringify(latestUser));
+                } catch (err) {
+                    if (err.response?.status === 401 || err.response?.status === 403) {
+                        logout();
+                    }
+                } finally {
+                    setLoading(false);
+                }
+            }
         };
 
         initializeAuth();
