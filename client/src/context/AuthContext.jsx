@@ -11,10 +11,10 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const initializeAuth = async () => {
-            const storedUser = localStorage.getItem('user');
-            const token = localStorage.getItem('token');
-            const storedSpace = localStorage.getItem('activeSpace');
-            const storedSpaceToken = localStorage.getItem('spaceToken');
+            const storedUser = sessionStorage.getItem('user');
+            const token = sessionStorage.getItem('token');
+            const storedSpace = sessionStorage.getItem('activeSpace');
+            const storedSpaceToken = sessionStorage.getItem('spaceToken');
 
             if (storedUser) {
                 setUser(JSON.parse(storedUser));
@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
 
             if (storedSpace === 'primary') {
                 setActiveSpace('main');
-                localStorage.setItem('activeSpace', 'main');
+                sessionStorage.setItem('activeSpace', 'main');
             } else if (storedSpace) {
                 setActiveSpace(storedSpace);
             }
@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }) => {
                     const response = await api.get('/auth/me');
                     const latestUser = response.data;
                     setUser(latestUser);
-                    localStorage.setItem('user', JSON.stringify(latestUser));
+                    sessionStorage.setItem('user', JSON.stringify(latestUser));
                 } catch (err) {
                     if (err.response?.status === 401 || err.response?.status === 403) {
                         logout();
@@ -60,8 +60,8 @@ export const AuthProvider = ({ children }) => {
         const response = await api.post('/auth/login', { username, password });
         const { user, token } = response.data;
 
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
+        sessionStorage.setItem('token', token);
+        sessionStorage.setItem('user', JSON.stringify(user));
         setUser(user);
         return user;
     };
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
         const response = await api.post('/auth/second-space/init', { password });
         const { user } = response.data;
         setUser(user);
-        localStorage.setItem('user', JSON.stringify(user));
+        sessionStorage.setItem('user', JSON.stringify(user));
         return user;
     };
 
@@ -78,27 +78,27 @@ export const AuthProvider = ({ children }) => {
         const response = await api.post('/auth/second-space/auth', { password, useMainPassword });
         if (response.data.spaceToken) {
             setSpaceToken(response.data.spaceToken);
-            localStorage.setItem('spaceToken', response.data.spaceToken);
+            sessionStorage.setItem('spaceToken', response.data.spaceToken);
             setActiveSpace('second');
-            localStorage.setItem('activeSpace', 'second');
+            sessionStorage.setItem('activeSpace', 'second');
         }
         return response.data;
     };
 
     const toggleSpace = (space) => {
         setActiveSpace(space);
-        localStorage.setItem('activeSpace', space);
+        sessionStorage.setItem('activeSpace', space);
         if (space === 'main') {
             setSpaceToken(null);
-            localStorage.removeItem('spaceToken');
+            sessionStorage.removeItem('spaceToken');
         }
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('activeSpace');
-        localStorage.removeItem('spaceToken');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        sessionStorage.removeItem('activeSpace');
+        sessionStorage.removeItem('spaceToken');
         setUser(null);
         setSpaceToken(null);
         setActiveSpace('main');
