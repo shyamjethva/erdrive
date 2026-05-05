@@ -11,10 +11,20 @@
   --color-primary-700: #0369a1;
   --color-primary-800: #075985;
   --color-primary-900: #0c4a6e;
+
+  /* Premium Login Theme Scoped Variables */
+  --color-login-background: hsl(0 0% 100%);
+  --color-login-foreground: hsl(222.2 84% 4.9%);
+  --color-login-primary: hsl(222.2 47.4% 11.2%);
+  --color-login-primary-foreground: hsl(210 40% 98%);
+  --color-login-border: hsl(214.3 31.8% 91.4%);
+  --color-login-input: hsl(214.3 31.8% 91.4%);
+  --color-login-ring: hsl(222.2 84% 4.9%);
 }
 
 :root {
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --radius: 0.5rem;
 }
 
 body {

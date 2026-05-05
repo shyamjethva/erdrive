@@ -36,17 +36,17 @@ const Sidebar = () => {
     };
 
     const navItems = [
-        { name: 'My Files', icon: FolderIcon, path: '/' },
-        { name: 'Recents', icon: ClockIcon, path: '/recents' },
-        { name: 'Starred', icon: StarIcon, path: '/starred' },
-        { name: 'Shared', icon: Share2Icon, path: '/shared' },
-        { name: 'Trash', icon: Trash2Icon, path: '/trash' },
-        { name: 'Spam', icon: ShieldAlertIcon, path: '/spam' },
-        { name: 'Storage', icon: DatabaseIcon, path: '/storage' },
+        { name: 'My Files', icon: FolderIcon, path: '/', color: 'text-blue-500', activeBg: 'bg-blue-50', activeText: 'text-blue-600' },
+        { name: 'Recents', icon: ClockIcon, path: '/recents', color: 'text-cyan-500', activeBg: 'bg-cyan-50', activeText: 'text-cyan-600' },
+        { name: 'Starred', icon: StarIcon, path: '/starred', color: 'text-amber-500', activeBg: 'bg-amber-50', activeText: 'text-amber-600' },
+        { name: 'Shared', icon: Share2Icon, path: '/shared', color: 'text-emerald-500', activeBg: 'bg-emerald-50', activeText: 'text-emerald-600' },
+        { name: 'Trash', icon: Trash2Icon, path: '/trash', color: 'text-rose-500', activeBg: 'bg-rose-50', activeText: 'text-rose-600' },
+        { name: 'Spam', icon: ShieldAlertIcon, path: '/spam', color: 'text-orange-500', activeBg: 'bg-orange-50', activeText: 'text-orange-600' },
+        { name: 'Storage', icon: DatabaseIcon, path: '/storage', color: 'text-violet-500', activeBg: 'bg-violet-50', activeText: 'text-violet-600' },
     ];
 
     if (user?.role === 'Admin' && activeSpace === 'main') {
-        navItems.push({ name: 'Admin Panel', icon: ShieldCheckIcon, path: '/admin' });
+        navItems.push({ name: 'Admin Panel', icon: ShieldCheckIcon, path: '/admin', color: 'text-indigo-500', activeBg: 'bg-indigo-50', activeText: 'text-indigo-600' });
     }
 
     const isSecondSpaceActive = activeSpace === 'second';
@@ -82,14 +82,18 @@ const Sidebar = () => {
                         className={({ isActive }) =>
                             `flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 ${isActive
                                 ? (isSecondSpaceActive
-                                    ? 'bg-indigo-50 text-indigo-600 font-medium'
-                                    : 'bg-primary-50 text-primary-600 font-medium')
-                                : 'text-slate-600 hover:bg-slate-100'
+                                    ? 'bg-indigo-50 text-indigo-600 font-medium shadow-sm shadow-indigo-100'
+                                    : `${item.activeBg} ${item.activeText} font-semibold shadow-sm`)
+                                : `text-slate-600 hover:bg-slate-100 hover:${item.color}`
                             }`
                         }
                     >
-                        <item.icon size={20} />
-                        {item.name}
+                        {({ isActive }) => (
+                            <>
+                                <item.icon size={20} className={isActive ? '' : item.color} />
+                                {item.name}
+                            </>
+                        )}
                     </NavLink>
                 ))}
 
@@ -122,7 +126,7 @@ const Sidebar = () => {
                         {isSecondSpaceActive ? (
                             <HardDriveIcon size={20} className="text-slate-500" />
                         ) : hasSecondSpace ? (
-                            <LayersIcon size={20} className="text-slate-500" />
+                            <LayersIcon size={20} className="text-indigo-500" />
                         ) : (
                             <div className="w-5 h-5 border-2 border-dashed border-slate-300 rounded flex items-center justify-center">
                                 <PlusIcon size={12} />
