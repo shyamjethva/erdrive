@@ -50,7 +50,7 @@ const Recents = () => {
     const handleAction = async (action, item, type) => {
         if (action === 'download') {
             try {
-                const token = localStorage.getItem('token');
+                const token = sessionStorage.getItem('token');
                 const response = await api.get(`/files/download/${item._id}?token=${token}&space=${activeSpace}`, {
                     responseType: 'blob'
                 });

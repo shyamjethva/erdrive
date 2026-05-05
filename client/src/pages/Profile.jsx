@@ -74,7 +74,7 @@ const Profile = () => {
             });
             const { user: updatedUser } = res.data;
             setUser(updatedUser);
-            localStorage.setItem('user', JSON.stringify(updatedUser));
+            sessionStorage.setItem('user', JSON.stringify(updatedUser));
             setMessage({ type: 'success', text: 'Profile picture updated!' });
         } catch (err) {
             setMessage({ type: 'error', text: err.response?.data?.error || 'Upload failed' });
@@ -96,7 +96,7 @@ const Profile = () => {
 
             const res = await api.patch('/auth/update', updateData);
             setUser(res.data);
-            localStorage.setItem('user', JSON.stringify(res.data));
+            sessionStorage.setItem('user', JSON.stringify(res.data));
             setIsEditModalOpen(false);
             setMessage({
                 type: 'success',
@@ -137,7 +137,7 @@ const Profile = () => {
         try {
             const res = await api.patch('/auth/update', { twoFactorEnabled: !user.twoFactorEnabled });
             setUser(res.data);
-            localStorage.setItem('user', JSON.stringify(res.data));
+            sessionStorage.setItem('user', JSON.stringify(res.data));
             setMessage({ type: 'success', text: `2FA ${res.data.twoFactorEnabled ? 'Enabled' : 'Disabled'}!` });
         } catch (err) {
             setMessage({ type: 'error', text: 'Failed to update 2FA status' });

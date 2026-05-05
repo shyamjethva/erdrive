@@ -6,7 +6,7 @@ const FilePreviewModal = ({ file, onClose }) => {
     if (!file) return null;
 
     const apiBase = api.defaults.baseURL.replace('/api', '');
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
 
     const isImage = file.mimetype.startsWith('image/');
     const isPDF = file.mimetype.includes('pdf');
