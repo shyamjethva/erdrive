@@ -372,7 +372,7 @@ const SignInCard = ({
               </motion.div>
               
               <div className="text-center mt-6">
-                 <p className="text-xs text-gray-400">Internal Use Only • Error InfoTech</p>
+                  <p className="text-xs text-gray-400">Internal Use Only • Error InfoTech v2.1</p>
               </div>
             </form>
           </motion.div>
