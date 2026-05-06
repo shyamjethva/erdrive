@@ -24,9 +24,17 @@ const ensureSpaceAuth = (req, res, next) => {
 };
 
 // Helper to find or create folder recursively
-async function findOrCreateFolder(pathParts, parentId, ownerId, spaceType = 'main') {
+async function findOrCreateFolder(pathParts, parentId, ownerId, spaceType = 'main', folderCache = {}) {
     let currentParentId = parentId;
+    
     for (const folderName of pathParts) {
+        const cacheKey = `${currentParentId}_${folderName}_${spaceType}`;
+        
+        if (folderCache[cacheKey]) {
+            currentParentId = folderCache[cacheKey];
+            continue;
+        }
+
         let folder = await Folder.findOne({
             name: folderName,
             parentFolderId: currentParentId,
@@ -54,7 +62,9 @@ async function findOrCreateFolder(pathParts, parentId, ownerId, spaceType = 'mai
             });
             await folder.save();
         }
+        
         currentParentId = folder._id;
+        folderCache[cacheKey] = currentParentId;
     }
     return currentParentId;
 }
@@ -156,6 +166,7 @@ router.post('/upload', auth, upload.array('files'), async (req, res) => {
         let totalSize = 0;
         const uploadedFiles = [];
         const pathArray = Array.isArray(paths) ? paths : [paths];
+        const folderCache = {}; // Request-level cache for findOrCreateFolder
 
         for (let i = 0; i < req.files.length; i++) {
             const file = req.files[i];
@@ -200,7 +211,10 @@ router.post('/upload', auth, upload.array('files'), async (req, res) => {
             if (relativePath && relativePath.includes('/')) {
                 const parts = relativePath.split('/');
                 const folderParts = parts.slice(0, -1); // Remove the filename
-                targetFolderId = await findOrCreateFolder(folderParts, folderId, req.user._id, fileSpaceType);
+                
+                // IMPORTANT: Use targetFolderId (resolved ObjectId) instead of folderId (could be 'root')
+                targetFolderId = await findOrCreateFolder(folderParts, targetFolderId, req.user._id, fileSpaceType, folderCache);
+                
                 // After potentially creating folders, get the drive folder ID of the target
                 const folder = await Folder.findById(targetFolderId);
                 if (folder) targetDriveFolderId = folder.driveFolderId;
@@ -231,7 +245,26 @@ router.post('/upload', auth, upload.array('files'), async (req, res) => {
         res.status(201).send(uploadedFiles);
     } catch (error) {
         console.error('Upload error:', error);
-        res.status(400).send(error);
+        res.status(400).send({ 
+            error: 'Upload failed', 
+            message: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+        });
+    } finally {
+        // ALWAYS clean up any remaining temporary files in the uploads/ directory
+        // storageService.saveFile cleans up successful ones, but if something fails
+        // we might have leftovers in req.files
+        if (req.files) {
+            req.files.forEach(file => {
+                if (fs.existsSync(file.path)) {
+                    try {
+                        fs.unlinkSync(file.path);
+                    } catch (e) {
+                        console.error('Failed to clean up temp file:', file.path, e);
+                    }
+                }
+            });
+        }
     }
 });
 
