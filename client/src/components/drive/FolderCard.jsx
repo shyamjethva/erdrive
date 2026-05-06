@@ -73,7 +73,7 @@ const FolderCard = ({ folder, onClick, onContextMenu, viewMode = 'grid' }) => {
                 </div>
 
                 {/* Owner Column */}
-                <div className="w-48 hidden md:flex items-center gap-2 shrink-0">
+                <div className="w-32 hidden lg:flex items-center gap-2 shrink-0">
                     <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden border border-white shadow-sm">
                         {folder.ownerId?.avatar ? (
                             <img src={`${apiBase}${folder.ownerId.avatar}`} alt={ownerName} className="w-full h-full object-cover" />
@@ -81,18 +81,18 @@ const FolderCard = ({ folder, onClick, onContextMenu, viewMode = 'grid' }) => {
                             <span className="text-[10px] font-bold text-slate-500 uppercase">{ownerName[0]}</span>
                         )}
                     </div>
-                    <span className="text-sm text-slate-600 font-medium">{isMe ? 'me' : ownerName}</span>
+                    <span className="text-sm text-slate-600 font-medium truncate">{isMe ? 'me' : ownerName}</span>
                 </div>
 
                 {/* Date Column */}
-                <div className="w-40 hidden lg:block shrink-0">
+                <div className="w-32 hidden xl:block shrink-0">
                     <p className="text-sm text-slate-500 font-medium">
-                        {formatRelativeDate(folder.updatedAt)} {isMe ? 'me' : ''}
+                        {formatRelativeDate(folder.updatedAt)}
                     </p>
                 </div>
 
                 {/* Size Column */}
-                <div className="w-24 hidden sm:block shrink-0 text-right">
+                <div className="w-20 hidden md:block shrink-0 text-right">
                     <p className="text-sm text-slate-500 font-medium">—</p>
                 </div>
 

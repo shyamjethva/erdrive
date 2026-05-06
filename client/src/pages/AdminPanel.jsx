@@ -147,39 +147,39 @@ const AdminPanel = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-3xl shadow-xl border overflow-hidden">
-                <table className="w-full text-left">
+            <div className="bg-white rounded-3xl shadow-xl border overflow-x-auto">
+                <table className="w-full text-left min-w-[700px]">
                     <thead className="bg-slate-50 border-b">
                         <tr>
-                            <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Username</th>
-                            <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Email</th>
-                            <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Role</th>
-                            <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Storage Used</th>
-                            <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                            <th className="px-4 md:px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest w-[25%]">Username</th>
+                            <th className="px-4 md:px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest w-[30%]">Email</th>
+                            <th className="px-4 md:px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest w-[15%]">Role</th>
+                            <th className="px-4 md:px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest w-[20%]">Storage Used</th>
+                            <th className="px-4 md:px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right w-[10%]">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y">
                         {users.map((u) => (
                             <tr key={u._id} className="hover:bg-slate-50 transition-colors">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 uppercase text-xs border">
+                                <td className="px-4 md:px-6 py-4">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 uppercase text-xs border shrink-0">
                                             {u.username[0]}
                                         </div>
-                                        <span className="font-bold text-slate-800">{u.username}</span>
+                                        <span className="font-bold text-slate-800 truncate" title={u.username}>{u.username}</span>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4">
-                                    <span className="font-medium text-slate-600">{u.email}</span>
+                                <td className="px-4 md:px-6 py-4">
+                                    <span className="font-medium text-slate-600 truncate block" title={u.email}>{u.email}</span>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 md:px-6 py-4">
                                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${u.role === 'Admin' ? 'bg-purple-50 text-purple-600' : 'bg-green-50 text-green-600'
                                         }`}>
                                         {u.role === 'Admin' && <ShieldCheckIcon size={12} className="mr-1" />}
                                         {u.role}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 md:px-6 py-4">
                                     <div className="w-full max-w-[120px]">
                                         <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1 font-bold">
                                             <span>{Math.round((u.storageUsed / (1024 ** 3)) * 10) / 10} GB</span>
@@ -193,7 +193,7 @@ const AdminPanel = () => {
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                <td className="px-4 md:px-6 py-4 text-right flex items-center justify-end gap-2">
                                     <button
                                         onClick={() => {
                                             const limitInGB = Math.round((u.storageLimit || 0) / (1024 ** 3));

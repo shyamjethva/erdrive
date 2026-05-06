@@ -452,7 +452,7 @@ const Dashboard = () => {
                                     <div className="w-1.5 h-1.5 rounded-full bg-primary-500" />
                                     Quick Access
                                 </h2>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                                     {recentFiles.map(file => (
                                         <FileCard
                                             key={file._id}
@@ -467,7 +467,7 @@ const Dashboard = () => {
 
                         <div className="space-y-4">
                             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Folders</h2>
-                            <div className={viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" : "bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm flex flex-col"}>
+                            <div className={viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" : "bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm flex flex-col"}>
                                 {filteredFolders.map(folder => (
                                     <FolderCard
                                         key={folder._id}
@@ -483,7 +483,7 @@ const Dashboard = () => {
                         <div className="space-y-4">
                             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Files</h2>
                             {viewMode === 'grid' ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                                     {filteredFiles.map(file => (
                                         <FileCard
                                             key={file._id}
@@ -502,14 +502,14 @@ const Dashboard = () => {
                                         <div className="flex-1 min-w-0">
                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</span>
                                         </div>
-                                        <div className="w-48 hidden md:block shrink-0">
+                                        <div className="w-32 hidden lg:block shrink-0">
                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Owner</span>
                                         </div>
-                                        <div className="w-40 hidden lg:block shrink-0">
+                                        <div className="w-32 hidden xl:block shrink-0">
                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Modified</span>
                                         </div>
-                                        <div className="w-24 hidden sm:block shrink-0 text-right">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">File Size</span>
+                                        <div className="w-20 hidden md:block shrink-0 text-right">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Size</span>
                                         </div>
                                         <div className="w-10 shrink-0" /> {/* Actions column spacer */}
                                     </div>

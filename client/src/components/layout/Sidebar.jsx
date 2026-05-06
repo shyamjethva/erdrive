@@ -18,7 +18,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import SpacePasswordModal from '../drive/SpacePasswordModal';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, onClose }) => {
     const { user, logout, activeSpace, toggleSpace, initializeSecondSpace } = useAuth();
     const navigate = useNavigate();
     const [isPasswordModalOpen, setIsPasswordModalOpen] = React.useState(false);
@@ -53,133 +53,163 @@ const Sidebar = () => {
     const hasSecondSpace = !!user?.secondSpaceRootId;
 
     return (
-        <div className="w-64 h-full glass border-r flex flex-col p-4">
-            <div className="flex flex-col gap-1 mb-8 px-2">
-                <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-lg transition-all duration-300 ${isSecondSpaceActive ? 'bg-indigo-600 shadow-indigo-200' : 'bg-primary-600 shadow-primary-200'
-                        }`}>
-                        {isSecondSpaceActive ? <ShieldIcon size={20} strokeWidth={2.5} /> : <HardDriveIcon size={20} strokeWidth={2.5} />}
-                    </div>
-                    <span className="text-xl font-bold tracking-tight text-slate-800 transition-colors duration-300">
-                        Internal Drive
-                    </span>
-                </div>
-                {isSecondSpaceActive && (
-                    <div className="flex items-center gap-2 mt-2 px-1">
-                        <div className="h-4 w-[2px] bg-indigo-500 rounded-full" />
-                        <span className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
-                            Second Space
-                        </span>
-                    </div>
-                )}
-            </div>
-
-            <nav className="flex-1 space-y-1">
-                {navItems.map((item) => (
-                    <NavLink
-                        key={item.name}
-                        to={item.path}
-                        className={({ isActive }) =>
-                            `flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 ${isActive
-                                ? (isSecondSpaceActive
-                                    ? 'bg-indigo-50 text-indigo-600 font-medium shadow-sm shadow-indigo-100'
-                                    : `${item.activeBg} ${item.activeText} font-semibold shadow-sm`)
-                                : `text-slate-600 hover:bg-slate-100 hover:${item.color}`
-                            }`
-                        }
-                    >
-                        {({ isActive }) => (
-                            <>
-                                <item.icon size={20} className={isActive ? '' : item.color} />
-                                {item.name}
-                            </>
-                        )}
-                    </NavLink>
-                ))}
-
-                {/* Space Switching Button */}
-                <button
-                    onClick={(e) => {
-                        if (!hasSecondSpace) {
-                            if (window.confirm('Initialize Second Space?')) {
-                                setPasswordMode('init');
-                                setIsPasswordModalOpen(true);
-                            }
-                        } else {
-                            // Toggle space
-                            if (isSecondSpaceActive) {
-                                toggleSpace('main');
-                                navigate('/');
-                            } else {
-                                navigate('/second-space');
-                            }
-                        }
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-300 mt-1 ${isSecondSpaceActive
-                        ? 'bg-slate-100 text-slate-600 border border-slate-200'
-                        : hasSecondSpace
-                            ? 'text-slate-600 hover:bg-slate-50'
-                            : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'
-                        }`}
-                >
-                    <div className="flex items-center gap-3">
-                        {isSecondSpaceActive ? (
-                            <HardDriveIcon size={20} className="text-slate-500" />
-                        ) : hasSecondSpace ? (
-                            <LayersIcon size={20} className="text-indigo-500" />
-                        ) : (
-                            <div className="w-5 h-5 border-2 border-dashed border-slate-300 rounded flex items-center justify-center">
-                                <PlusIcon size={12} />
-                            </div>
-                        )}
-                        <span className="text-sm font-medium">
-                            {isSecondSpaceActive ? 'Switch to Main Drive' : hasSecondSpace ? 'Second Space' : 'Add Second Space'}
-                        </span>
-                    </div>
-                </button>
-            </nav>
-
-            <div className="pt-4 border-t space-y-4">
-                {/* Space Switching is now handled in the main nav list */}
-
-                <SpacePasswordModal
-                    isOpen={isPasswordModalOpen}
-                    mode="init"
-                    onClose={() => setIsPasswordModalOpen(false)}
-                    onSubmit={handleInitSecondSpace}
+        <>
+            {/* Mobile Overlay */}
+            {isOpen && (
+                <div 
+                    className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] lg:hidden animate-in fade-in duration-300"
+                    onClick={onClose}
                 />
+            )}
 
-                {/* Storage Usage */}
-                <div className="mx-1 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-2">
-                        <span className="flex items-center gap-1.5 font-black uppercase tracking-wider">
-                            <DatabaseIcon size={14} className={isSecondSpaceActive ? "text-indigo-500" : "text-primary-500"} />
-                            {isSecondSpaceActive ? 'Private Storage' : 'Storage'}
-                        </span>
-                        <span className="text-slate-400">
-                            {user?.storageLimit > 0 ? (user?.storageUsed / user?.storageLimit * 100).toFixed(0) : 0}%
+            <div className={`
+                fixed inset-y-0 left-0 z-[70] w-72 bg-white/80 backdrop-blur-xl border-r flex flex-col p-4 transition-transform duration-300 ease-in-out
+                lg:relative lg:translate-x-0 lg:z-0 lg:w-64 lg:bg-transparent lg:backdrop-blur-none
+                ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            `}>
+                <div className="flex flex-col gap-1 mb-8 px-2 relative">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-lg transition-all duration-300 ${isSecondSpaceActive ? 'bg-indigo-600 shadow-indigo-200' : 'bg-primary-600 shadow-primary-200'
+                            }`}>
+                            {isSecondSpaceActive ? <ShieldIcon size={20} strokeWidth={2.5} /> : <HardDriveIcon size={20} strokeWidth={2.5} />}
+                        </div>
+                        <span className="text-xl font-bold tracking-tight text-slate-800 transition-colors duration-300">
+                            Internal Drive
                         </span>
                     </div>
-                    <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden mb-2">
-                        <div
-                            className={`h-full transition-all duration-1000 shadow-sm ${isSecondSpaceActive ? 'bg-indigo-500' : 'bg-primary-500'}`}
-                            style={{ width: `${user?.storageLimit > 0 ? (user?.storageUsed / user?.storageLimit) * 100 : 0}%` }}
-                        />
-                    </div>
-                    <p className="text-[11px] text-slate-500 font-medium text-center">
-                        {Math.round((user?.storageUsed / (1024 ** 3)) * 10) / 10} GB of {(user?.storageLimit || 0) / (1024 ** 3)} GB used
-                    </p>
+
+                    {/* Close Button - Mobile Only */}
+                    <button 
+                        onClick={onClose}
+                        className="lg:hidden absolute top-0 right-0 p-2 text-slate-400 hover:text-slate-600"
+                    >
+                        <LogOutIcon size={20} className="rotate-180" />
+                    </button>
+
+                    {isSecondSpaceActive && (
+                        <div className="flex items-center gap-2 mt-2 px-1">
+                            <div className="h-4 w-[2px] bg-indigo-500 rounded-full" />
+                            <span className="text-xs font-black uppercase tracking-[0.2em] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                                Second Space
+                            </span>
+                        </div>
+                    )}
                 </div>
 
-                <button
-                    onClick={logout}
-                    className="flex items-center gap-3 px-3 py-2 w-full text-slate-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all duration-200"
-                >
-                    <LogOutIcon size={20} />
-                    Logout
-                </button>
+                <nav className="flex-1 space-y-1">
+                    {navItems.map((item) => (
+                        <NavLink
+                            key={item.name}
+                            to={item.path}
+                            onClick={() => {
+                                if (window.innerWidth < 1024) onClose();
+                            }}
+                            className={({ isActive }) =>
+                                `flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 ${isActive
+                                    ? (isSecondSpaceActive
+                                        ? 'bg-indigo-50 text-indigo-600 font-medium shadow-sm shadow-indigo-100'
+                                        : `${item.activeBg} ${item.activeText} font-semibold shadow-sm`)
+                                    : `text-slate-600 hover:bg-slate-100 hover:${item.color}`
+                                }`
+                            }
+                        >
+                            {({ isActive }) => (
+                                <>
+                                    <item.icon size={20} className={isActive ? '' : item.color} />
+                                    {item.name}
+                                </>
+                            )}
+                        </NavLink>
+                    ))}
+
+                    {/* Space Switching Button */}
+                    <button
+                        onClick={(e) => {
+                            if (!hasSecondSpace) {
+                                if (window.confirm('Initialize Second Space?')) {
+                                    setPasswordMode('init');
+                                    setIsPasswordModalOpen(true);
+                                }
+                            } else {
+                                // Toggle space
+                                if (isSecondSpaceActive) {
+                                    toggleSpace('main');
+                                    navigate('/');
+                                } else {
+                                    navigate('/second-space');
+                                }
+                                if (window.innerWidth < 1024) onClose();
+                            }
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-300 mt-1 ${isSecondSpaceActive
+                            ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                            : hasSecondSpace
+                                ? 'text-slate-600 hover:bg-slate-50'
+                                : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'
+                            }`}
+                    >
+                        <div className="flex items-center gap-3">
+                            {isSecondSpaceActive ? (
+                                <HardDriveIcon size={20} className="text-slate-500" />
+                            ) : hasSecondSpace ? (
+                                <LayersIcon size={20} className="text-indigo-500" />
+                            ) : (
+                                <div className="w-5 h-5 border-2 border-dashed border-slate-300 rounded flex items-center justify-center">
+                                    <PlusIcon size={12} />
+                                </div>
+                            )}
+                            <span className="text-sm font-medium">
+                                {isSecondSpaceActive ? 'Switch to Main Drive' : hasSecondSpace ? 'Second Space' : 'Add Second Space'}
+                            </span>
+                        </div>
+                    </button>
+                </nav>
+
+                <div className="pt-4 border-t space-y-4">
+                    {/* Space Switching is now handled in the main nav list */}
+
+                    <SpacePasswordModal
+                        isOpen={isPasswordModalOpen}
+                        mode="init"
+                        onClose={() => setIsPasswordModalOpen(false)}
+                        onSubmit={handleInitSecondSpace}
+                    />
+
+                    {/* Storage Usage */}
+                    <div className="mx-1 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-2">
+                            <span className="flex items-center gap-1.5 font-black uppercase tracking-wider">
+                                <DatabaseIcon size={14} className={isSecondSpaceActive ? "text-indigo-500" : "text-primary-500"} />
+                                {isSecondSpaceActive ? 'Private Storage' : 'Storage'}
+                            </span>
+                            <span className="text-slate-400">
+                                {user?.storageLimit > 0 ? (user?.storageUsed / user?.storageLimit * 100).toFixed(0) : 0}%
+                            </span>
+                        </div>
+                        <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden mb-2">
+                            <div
+                                className={`h-full transition-all duration-1000 shadow-sm ${isSecondSpaceActive ? 'bg-indigo-500' : 'bg-primary-500'}`}
+                                style={{ width: `${user?.storageLimit > 0 ? (user?.storageUsed / user?.storageLimit) * 100 : 0}%` }}
+                            />
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-medium text-center">
+                            {Math.round((user?.storageUsed / (1024 ** 3)) * 10) / 10} GB of {(user?.storageLimit || 0) / (1024 ** 3)} GB used
+                        </p>
+                    </div>
+
+                    <button
+                        onClick={() => {
+                            logout();
+                            if (window.innerWidth < 1024) onClose();
+                        }}
+                        className="flex items-center gap-3 px-3 py-2 w-full text-slate-600 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all duration-200"
+                    >
+                        <LogOutIcon size={20} />
+                        Logout
+                    </button>
+                </div>
             </div>
-        </div>
+        </>
     );
 };
 

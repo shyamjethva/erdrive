@@ -1,10 +1,10 @@
 import React from 'react';
-import { SearchIcon, FileIcon, FolderIcon, UserIcon, LogOutIcon, SettingsIcon } from 'lucide-react';
+import { SearchIcon, FileIcon, FolderIcon, UserIcon, LogOutIcon, SettingsIcon, MenuIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../api/axios';
 
-const Topbar = ({ searchQuery, setSearchQuery }) => {
+const Topbar = ({ searchQuery, setSearchQuery, onMenuClick }) => {
     const { user } = useAuth();
     const [searchResults, setSearchResults] = React.useState({ files: [], folders: [] });
     const [isSearching, setIsSearching] = React.useState(false);
@@ -58,7 +58,14 @@ const Topbar = ({ searchQuery, setSearchQuery }) => {
 
 
     return (
-        <header className="h-16 flex items-center justify-between px-8 bg-white border-b sticky top-0 z-50">
+        <header className="h-16 flex items-center justify-between px-4 md:px-8 bg-white border-b sticky top-0 z-50 gap-4">
+            <button 
+                onClick={onMenuClick}
+                className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+            >
+                <MenuIcon size={24} />
+            </button>
+
             <div className="flex-1 max-w-2xl relative group">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary-500 transition-colors">
                     <SearchIcon size={18} />
