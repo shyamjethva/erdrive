@@ -1,5 +1,5 @@
-import React from 'react';
-import { XIcon, DownloadIcon, FileIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { XIcon, DownloadIcon, FileIcon, CopyIcon, CheckIcon, FileTextIcon, Volume2Icon } from 'lucide-react';
 import api from '../../api/axios';
 
 const FilePreviewModal = ({ file, onClose }) => {
@@ -10,11 +10,47 @@ const FilePreviewModal = ({ file, onClose }) => {
 
     const isImage = file.mimetype.startsWith('image/');
     const isPDF = file.mimetype.includes('pdf');
+    const isVideo = file.mimetype.startsWith('video/');
+    const isAudio = file.mimetype.startsWith('audio/');
 
     // Construct storage URL via backend proxy
     const fileStorageUrl = `${apiBase}${file.previewUrl}?token=${token}`;
-
     const downloadUrl = `${apiBase}/api/files/download/${file._id}?token=${token}`;
+
+    const [textContent, setTextContent] = useState(null);
+    const [loadingText, setLoadingText] = useState(false);
+    const [isTextFile, setIsTextFile] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    useEffect(() => {
+        if (!isImage && !isPDF && !isVideo && !isAudio) {
+            setLoadingText(true);
+            setIsTextFile(false);
+            setTextContent(null);
+            fetch(fileStorageUrl)
+                .then((res) => {
+                    if (!res.ok) throw new Error(`Failed to fetch file content (status ${res.status})`);
+                    return res.text();
+                })
+                .then((text) => {
+                    // Simple heuristic to check if the file content is text/readable or binary
+                    const isBinary = /[\x00-\x08\x0E-\x1F\x7F]/.test(text.slice(0, 1000));
+                    if (!isBinary && text.length < 2000000) { // Limit to 2MB for rendering performance
+                        setIsTextFile(true);
+                        setTextContent(text);
+                    } else {
+                        setIsTextFile(false);
+                    }
+                })
+                .catch((err) => {
+                    console.error('Error fetching file content for preview:', err);
+                    setIsTextFile(false);
+                })
+                .finally(() => {
+                    setLoadingText(false);
+                });
+        }
+    }, [fileStorageUrl, isImage, isPDF, isVideo, isAudio]);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 lg:p-10">
@@ -43,7 +79,12 @@ const FilePreviewModal = ({ file, onClose }) => {
                 </div>
 
                 <div className="flex-1 overflow-auto bg-slate-50 flex items-center justify-center p-8">
-                    {isImage ? (
+                    {loadingText ? (
+                        <div className="text-center py-12">
+                            <div className="w-16 h-16 border-4 border-slate-300 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
+                            <h4 className="text-lg font-bold text-slate-700">Loading file preview...</h4>
+                        </div>
+                    ) : isImage ? (
                         <img
                             src={fileStorageUrl}
                             alt={file.name}
@@ -55,6 +96,67 @@ const FilePreviewModal = ({ file, onClose }) => {
                             className="w-full h-full rounded-xl border shadow-sm"
                             title={file.name}
                         />
+                    ) : isVideo ? (
+                        <video
+                            src={fileStorageUrl}
+                            controls
+                            className="max-w-full max-h-full rounded-xl shadow-lg border bg-black"
+                        />
+                    ) : isAudio ? (
+                        <div className="bg-white p-8 rounded-3xl border shadow-md flex flex-col items-center gap-4 w-full max-w-md">
+                            <div className="w-16 h-16 bg-primary-50 text-primary-500 rounded-full flex items-center justify-center">
+                                <Volume2Icon size={32} />
+                            </div>
+                            <h4 className="font-bold text-slate-800 text-lg truncate w-full text-center">{file.name}</h4>
+                            <audio src={fileStorageUrl} controls className="w-full mt-2" />
+                        </div>
+                    ) : isTextFile ? (
+                        <div className="w-full h-full flex flex-col bg-slate-950 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl relative">
+                            {/* Toolbar */}
+                            <div className="flex items-center justify-between px-6 py-4 bg-slate-900 border-b border-slate-800">
+                                <div className="flex items-center gap-2">
+                                    <FileTextIcon size={16} className="text-slate-400" />
+                                    <span className="text-sm font-semibold text-slate-300">File Contents</span>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(textContent);
+                                        setCopied(true);
+                                        setTimeout(() => setCopied(false), 2000);
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-700/50 cursor-pointer"
+                                >
+                                    {copied ? (
+                                        <>
+                                            <CheckIcon size={14} className="text-emerald-400" />
+                                            <span className="text-emerald-400">Copied!</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CopyIcon size={14} />
+                                            <span>Copy Content</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                            {/* Scrollable text container */}
+                            <div className="flex-1 overflow-auto p-6 font-mono text-xs leading-relaxed text-slate-300 text-left select-text selection:bg-primary-500/30">
+                                <table className="w-full border-collapse">
+                                    <tbody>
+                                        {textContent.split('\n').map((line, idx) => (
+                                            <tr key={idx} className="hover:bg-slate-900/50 group">
+                                                <td className="w-10 pr-4 text-right text-slate-600 font-bold select-none border-r border-slate-800/60 group-hover:text-slate-400 transition-colors">
+                                                    {idx + 1}
+                                                </td>
+                                                <td className="pl-4 whitespace-pre break-all">
+                                                    {line || ' '}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     ) : (
                         <div className="text-center">
                             <div className="w-24 h-24 bg-slate-200 rounded-3xl flex items-center justify-center text-slate-400 mx-auto mb-6">

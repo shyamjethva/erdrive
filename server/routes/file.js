@@ -11,6 +11,7 @@ import { auth } from '../middleware/auth.js';
 import { checkSpaceAuth } from '../middleware/spaceAuth.js';
 import { storageService } from '../services/storage.js';
 import { googleDriveService } from '../services/googleDrive.js';
+import zlib from 'zlib';
 
 const ensureSpaceAuth = (req, res, next) => {
     const query = req.query || {};
@@ -67,6 +68,33 @@ async function findOrCreateFolder(pathParts, parentId, ownerId, spaceType = 'mai
         folderCache[cacheKey] = currentParentId;
     }
     return currentParentId;
+}
+
+function processFileBuffer(buffer, mimetype) {
+    let finalBuffer = buffer;
+    let finalMimeType = mimetype;
+    try {
+        if (buffer.length > 0 && buffer[0] === 0x78) {
+            const decompressed = zlib.inflateSync(buffer);
+            finalBuffer = decompressed;
+            
+            // Check for git object header
+            const nullIndex = finalBuffer.indexOf(0);
+            if (nullIndex !== -1 && nullIndex < 50) {
+                const header = finalBuffer.slice(0, nullIndex).toString();
+                if (/^(blob|commit|tree|tag) \d+$/.test(header)) {
+                    finalBuffer = finalBuffer.slice(nullIndex + 1);
+                }
+            }
+            
+            if (mimetype === 'application/octet-stream') {
+                finalMimeType = 'text/plain';
+            }
+        }
+    } catch (e) {
+        // Not compressed or failed to inflate
+    }
+    return { buffer: finalBuffer, mimetype: finalMimeType };
 }
 
 const router = express.Router();
@@ -392,16 +420,34 @@ router.get('/view/:id', auth, ensureSpaceAuth, async (req, res) => {
         // Stream from Google Drive if available
         if (file.driveFileId) {
             const stream = await googleDriveService.downloadFileStream(file.driveFileId);
-            res.setHeader('Content-Type', file.mimetype);
-            res.setHeader('Content-Disposition', 'inline');
-            stream.pipe(res);
+            const chunks = [];
+            stream.on('data', (chunk) => chunks.push(chunk));
+            stream.on('end', () => {
+                const rawBuffer = Buffer.concat(chunks);
+                const { buffer, mimetype } = processFileBuffer(rawBuffer, file.mimetype);
+                res.setHeader('Content-Type', mimetype);
+                res.setHeader('Content-Disposition', 'inline');
+                res.send(buffer);
+            });
+            stream.on('error', (err) => {
+                console.error('Download stream error:', err);
+                if (!res.headersSent) {
+                    res.status(500).send({ error: 'Failed to retrieve file stream' });
+                }
+            });
             return;
         }
 
         // Local file
-        res.setHeader('Content-Type', file.mimetype);
-        res.setHeader('Content-Disposition', 'inline');
-        res.sendFile(path.resolve(file.storagePath));
+        if (fs.existsSync(file.storagePath)) {
+            const rawBuffer = fs.readFileSync(file.storagePath);
+            const { buffer, mimetype } = processFileBuffer(rawBuffer, file.mimetype);
+            res.setHeader('Content-Type', mimetype);
+            res.setHeader('Content-Disposition', 'inline');
+            res.send(buffer);
+            return;
+        }
+        res.status(404).send({ error: 'File not found on local storage' });
     } catch (error) {
         console.error('View error:', error);
         res.status(500).send(error);
