@@ -22,6 +22,61 @@ const ensureSpaceAuth = (req, res, next) => {
 import bcrypt from 'bcryptjs';
 const router = express.Router();
 
+// Move folder
+router.patch('/:id/move', auth, async (req, res) => {
+    try {
+        const { targetFolderId } = req.body;
+        const folder = await Folder.findById(req.params.id);
+        if (!folder) return res.status(404).send({ error: 'Folder not found' });
+
+        if (folder.ownerId.toString() !== req.user._id.toString()) {
+            return res.status(403).send({ error: 'Only owner can move this folder' });
+        }
+
+        // Prevent moving a folder into itself
+        if (targetFolderId === folder._id.toString()) {
+            return res.status(400).send({ error: 'Cannot move folder into itself' });
+        }
+
+        // Prevent moving into a subfolder (check recursively)
+        const isSubfolder = async (parentId, potentialChildId) => {
+            if (!parentId) return false;
+            const child = await Folder.findById(potentialChildId);
+            if (!child || !child.parentFolderId) return false;
+            if (child.parentFolderId.toString() === parentId) return true;
+            return isSubfolder(parentId, child.parentFolderId);
+        };
+
+        if (targetFolderId && targetFolderId !== 'root') {
+            const movingIntoSub = await isSubfolder(folder._id.toString(), targetFolderId);
+            if (movingIntoSub) {
+                return res.status(400).send({ error: 'Cannot move folder into its own subfolder' });
+            }
+        }
+
+        let newParentDriveId = null;
+        if (targetFolderId && targetFolderId !== 'root') {
+            const targetFolder = await Folder.findById(targetFolderId);
+            if (!targetFolder) return res.status(404).send({ error: 'Target folder not found' });
+            newParentDriveId = targetFolder.driveFolderId;
+        } else {
+            // Moving to root
+            newParentDriveId = folder.spaceType === 'second' ? req.user.secondSpaceRootDriveId : process.env.GOOGLE_DRIVE_PARENT_ID;
+        }
+
+        // Sync with Google Drive if needed
+        await storageService.moveItem(folder, newParentDriveId);
+
+        folder.parentFolderId = targetFolderId === 'root' ? (folder.spaceType === 'second' ? req.user.secondSpaceRootId : req.user.rootFolderId) : targetFolderId;
+        await folder.save();
+
+        res.send(folder);
+    } catch (error) {
+        console.error('Move Folder Error:', error);
+        res.status(400).send(error);
+    }
+});
+
 // Lock folder
 router.post('/:id/lock', auth, async (req, res) => {
     try {

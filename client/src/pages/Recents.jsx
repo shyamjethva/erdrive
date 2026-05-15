@@ -7,6 +7,7 @@ import { ClockIcon, SearchIcon } from 'lucide-react';
 import ContextMenu from '../components/drive/ContextMenu';
 import FilePreviewModal from '../components/drive/FilePreviewModal';
 import ShareModal from '../components/drive/ShareModal';
+import MoveModal from '../components/drive/MoveModal';
 import { useOutletContext } from 'react-router-dom';
 
 const Recents = () => {
@@ -19,6 +20,8 @@ const Recents = () => {
     const [previewFile, setPreviewFile] = useState(null);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [sharingItem, setSharingItem] = useState(null);
+    const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+    const [movingItem, setMovingItem] = useState(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -113,12 +116,33 @@ const Recents = () => {
             try {
                 const endpoint = type === 'folder' ? `/folders/${item._id}/pin` : `/files/${item._id}/pin`;
                 const res = await api.patch(endpoint);
-                setRecentFiles(recentFiles.map(f => f._id === item._id ? { ...f, isPinned: res.data.isPinned } : f));
-                showToast(res.data.isPinned ? 'Item pinned to top' : 'Item unpinned', 'success');
+                const updatedItem = res.data;
+                setRecentFiles(prev => {
+                    const updated = prev.map(f => f._id === item._id ? updatedItem : f);
+                    return [...updated].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) || new Date(b.updatedAt) - new Date(a.updatedAt));
+                });
+                showToast(updatedItem.isPinned ? 'Item pinned to top' : 'Item unpinned', 'success');
             } catch (err) {
                 console.error('Pin error:', err);
                 showToast('Failed to update pin status', 'error');
             }
+        } else if (action === 'move') {
+            setMovingItem({ ...item, type });
+            setIsMoveModalOpen(true);
+        }
+    };
+
+    const handleMove = async (targetFolderId, item, type) => {
+        try {
+            const endpoint = type === 'folder' ? `/folders/${item._id}/move` : `/files/${item._id}/move`;
+            await api.patch(endpoint, { targetFolderId });
+            showToast('Item moved successfully', 'success');
+            setIsMoveModalOpen(false);
+            setMovingItem(null);
+            fetchData();
+        } catch (error) {
+            console.error('Move error:', error);
+            showToast(error.response?.data?.error || 'Failed to move item', 'error');
         }
     };
 
@@ -185,6 +209,16 @@ const Recents = () => {
                     type={sharingItem.type}
                 />
             )}
+            <MoveModal
+                isOpen={isMoveModalOpen}
+                onClose={() => {
+                    setIsMoveModalOpen(false);
+                    setMovingItem(null);
+                }}
+                onMove={handleMove}
+                item={movingItem}
+                type={movingItem?.type}
+            />
         </div>
     );
 };

@@ -99,6 +99,40 @@ function processFileBuffer(buffer, mimetype) {
 
 const router = express.Router();
 
+// Move file
+router.patch('/:id/move', auth, async (req, res) => {
+    try {
+        const { targetFolderId } = req.body;
+        const file = await File.findById(req.params.id);
+        if (!file) return res.status(404).send({ error: 'File not found' });
+
+        if (file.ownerId.toString() !== req.user._id.toString()) {
+            return res.status(403).send({ error: 'Only owner can move this file' });
+        }
+
+        let newParentDriveId = null;
+        if (targetFolderId && targetFolderId !== 'root') {
+            const targetFolder = await Folder.findById(targetFolderId);
+            if (!targetFolder) return res.status(404).send({ error: 'Target folder not found' });
+            newParentDriveId = targetFolder.driveFolderId;
+        } else {
+            // Moving to root
+            newParentDriveId = file.spaceType === 'second' ? req.user.secondSpaceRootDriveId : process.env.GOOGLE_DRIVE_PARENT_ID;
+        }
+
+        // Sync with Google Drive if needed
+        await storageService.moveItem(file, newParentDriveId);
+
+        file.folderId = targetFolderId === 'root' ? (file.spaceType === 'second' ? req.user.secondSpaceRootId : req.user.rootFolderId) : targetFolderId;
+        await file.save();
+
+        res.send(file);
+    } catch (error) {
+        console.error('Move File Error:', error);
+        res.status(400).send(error);
+    }
+});
+
 // Test route
 router.get('/ping', (req, res) => res.send('pong'));
 

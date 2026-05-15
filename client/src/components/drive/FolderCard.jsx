@@ -125,6 +125,11 @@ const FolderCard = ({ folder, onClick, onContextMenu, viewMode = 'grid' }) => {
                             <PinIcon size={12} className="text-white fill-white" />
                         </div>
                     )}
+                    {folder.isStarred && (
+                        <div className="bg-amber-500 p-1.5 rounded-lg shadow-lg border border-amber-400 animate-in zoom-in-50 duration-300">
+                            <StarIcon size={12} className="text-white fill-white" />
+                        </div>
+                    )}
                     <button onClick={handleThreeDotsClick} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg opacity-0 group-hover:opacity-100 transition-all block cursor-pointer">
                         <MoreVerticalIcon size={18} />
                     </button>
@@ -133,9 +138,7 @@ const FolderCard = ({ folder, onClick, onContextMenu, viewMode = 'grid' }) => {
 
             <div className="">
                 <h3 className="font-semibold text-slate-800 break-words line-clamp-2 flex items-center gap-1.5" title={folder.name}>
-                    {folder.isPinned && <PinIcon size={14} className="text-primary-500 fill-primary-500 shrink-0" />}
                     {folder.name}
-                    {folder.isStarred && <StarIcon size={14} className="text-amber-500 fill-amber-500 shrink-0" />}
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">Updated {new Date(folder.updatedAt).toLocaleDateString()}</p>
             </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Trash2Icon, Edit3Icon, DownloadIcon, LinkIcon, XIcon, RotateCcwIcon, StarIcon, PaletteIcon, PinIcon, LockIcon, UnlockIcon } from 'lucide-react';
+import { Trash2Icon, Edit3Icon, DownloadIcon, LinkIcon, XIcon, RotateCcwIcon, StarIcon, PaletteIcon, PinIcon, LockIcon, UnlockIcon, FolderIcon, Share2Icon, ArrowRightIcon } from 'lucide-react';
 
 const ContextMenu = ({ x, y, item, type, onClose, onAction, isTrashNode }) => {
     const { user } = useAuth();
@@ -46,6 +46,7 @@ const ContextMenu = ({ x, y, item, type, onClose, onAction, isTrashNode }) => {
         { label: 'Delete Permanently', icon: Trash2Icon, action: 'delete_permanently', color: 'text-red-500' },
     ] : [
         { label: 'Rename', icon: Edit3Icon, action: 'rename', color: 'text-slate-600' },
+        { label: 'Move to...', icon: ArrowRightIcon, action: 'move', color: 'text-slate-600' },
         { label: 'Share Link', icon: LinkIcon, action: 'share', color: 'text-slate-600' },
         { label: 'Change Color', icon: PaletteIcon, action: 'change_color', color: 'text-slate-600', hide: type === 'file' },
         { label: item?.isPinned ? 'Unpin from Top' : 'Pin to Top', icon: PinIcon, action: 'pin', color: item?.isPinned ? 'text-primary-600' : 'text-slate-600' },

@@ -51,6 +51,11 @@ app.get('/api/ping', (req, res) => {
 });
 
 // Start Server
+app.use((req, res) => {
+    console.log(`404 - Not Found: ${req.method} ${req.originalUrl}`);
+    res.status(404).send({ error: 'Route not found' });
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

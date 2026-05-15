@@ -257,5 +257,34 @@ export const googleDriveService = {
             console.error('Google Drive About Error:', error);
             throw error;
         }
+    },
+
+    /**
+     * Move a file or folder in Google Drive
+     * @param {string} driveItemId Google Drive File/Folder ID
+     * @param {string} newParentId New parent folder ID
+     */
+    moveItem: async (driveItemId, newParentId) => {
+        try {
+            // Retrieve the existing parents to remove
+            const file = await drive.files.get({
+                fileId: driveItemId,
+                fields: 'parents',
+                supportsAllDrives: true
+            });
+            const previousParents = (file.data.parents || []).join(',');
+
+            // Move the file to the new folder
+            await drive.files.update({
+                fileId: driveItemId,
+                addParents: newParentId,
+                removeParents: previousParents,
+                fields: 'id, parents',
+                supportsAllDrives: true
+            });
+        } catch (error) {
+            console.error('Google Drive Move Error:', error);
+            throw error;
+        }
     }
 };

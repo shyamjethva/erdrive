@@ -93,5 +93,16 @@ export const storageService = {
         if (filePath && fs.existsSync(filePath)) {
             await unlink(filePath);
         }
+    },
+
+    moveItem: async (item, newParentDriveId) => {
+        const storageType = process.env.STORAGE_TYPE || 'local';
+        if (storageType === 'google_drive') {
+            const driveId = item.driveFileId || item.driveFolderId;
+            if (driveId) {
+                await googleDriveService.moveItem(driveId, newParentDriveId || process.env.GOOGLE_DRIVE_PARENT_ID);
+            }
+        }
+        // Local storage doesn't need physical move as it's organized by userId only
     }
 };

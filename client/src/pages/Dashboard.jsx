@@ -20,13 +20,16 @@ import {
     TableIcon,
     PresentationIcon,
     VideoIcon,
-    FormInputIcon
+    FormInputIcon,
+    ArrowUpRightIcon,
+    LayoutGridIcon
 } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import ContextMenu from '../components/drive/ContextMenu';
 import FilePreviewModal from '../components/drive/FilePreviewModal';
 import ShareModal from '../components/drive/ShareModal';
 import ColorPickerModal from '../components/drive/ColorPickerModal';
+import MoveModal from '../components/drive/MoveModal';
 
 const Dashboard = () => {
     const { user, activeSpace } = useAuth();
@@ -51,6 +54,8 @@ const Dashboard = () => {
     const [unlockingFolder, setUnlockingFolder] = useState(null);
     const [removingLockFolder, setRemovingLockFolder] = useState(null);
     const [unlockedFolders, setUnlockedFolders] = useState(new Set());
+    const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+    const [movingItem, setMovingItem] = useState(null);
 
     const fetchData = async (folderId) => {
         setLoading(true);
@@ -73,8 +78,6 @@ const Dashboard = () => {
             // Fetch recent files only on root
             if (folderId === 'root' || folderId === effectiveRootId) {
                 const recentRes = await api.get(`/files/recent?space=${activeSpace}`);
-                // Filter recents to only show files in the current space (optional, but good for isolation)
-                // For now, we'll just show them, but filtering by parent trail would be better
                 setRecentFiles(Array.isArray(recentRes.data) ? recentRes.data : []);
             }
 
@@ -105,7 +108,6 @@ const Dashboard = () => {
         const folder = typeof folderOrId === 'object' ? folderOrId : folders.find(f => f._id === id);
 
         if (id) {
-            // Check if folder is locked and not yet unlocked in this session
             if (folder?.isLocked && !unlockedFolders.has(id)) {
                 setUnlockingFolder(folder);
                 return;
@@ -173,10 +175,10 @@ const Dashboard = () => {
                     const endpoint = type === 'folder' ? `/folders/${item._id}/trash?space=${activeSpace}` : `/files/${item._id}/trash?space=${activeSpace}`;
                     await api.patch(endpoint);
                     if (type === 'folder') {
-                        setFolders(folders.filter(f => f._id !== item._id));
+                        setFolders(prev => prev.filter(f => f._id !== item._id));
                     } else {
-                        setFiles(files.filter(f => f._id !== item._id));
-                        setRecentFiles(recentFiles.filter(rf => rf._id !== item._id));
+                        setFiles(prev => prev.filter(f => f._id !== item._id));
+                        setRecentFiles(prev => prev.filter(rf => rf._id !== item._id));
                     }
                 } catch (err) {
                     console.error(err);
@@ -188,15 +190,16 @@ const Dashboard = () => {
                 try {
                     const endpoint = type === 'folder' ? `/folders/${item._id}/rename?space=${activeSpace}` : `/files/${item._id}/rename?space=${activeSpace}`;
                     const res = await api.patch(endpoint, { name: newName });
+                    const updatedItem = res.data;
                     if (type === 'folder') {
-                        setFolders(folders.map(f => f._id === item._id ? res.data : f));
+                        setFolders(prev => prev.map(f => f._id === item._id ? updatedItem : f));
                     } else {
-                        setFiles(files.map(f => f._id === item._id ? res.data : f));
-                        setRecentFiles(recentFiles.map(f => f._id === item._id ? res.data : f));
+                        setFiles(prev => prev.map(f => f._id === item._id ? updatedItem : f));
+                        setRecentFiles(prev => prev.map(f => f._id === item._id ? updatedItem : f));
                     }
                 } catch (err) {
                     console.error('Rename error:', err);
-                    alert('Failed to rename item.');
+                    showToast('Failed to rename item', 'error');
                 }
             }
         } else if (action === 'download') {
@@ -206,7 +209,6 @@ const Dashboard = () => {
                     responseType: 'blob'
                 });
 
-                // Check if the blob is actually a JSON error (happens if auth fails but responseType is blob)
                 if (response.data.type === 'application/json') {
                     const text = await response.data.text();
                     const error = JSON.parse(text);
@@ -237,13 +239,12 @@ const Dashboard = () => {
             try {
                 const endpoint = type === 'folder' ? `/folders/${item._id}/star?space=${activeSpace}` : `/files/${item._id}/star?space=${activeSpace}`;
                 const res = await api.patch(endpoint);
+                const updatedItem = res.data;
                 if (type === 'folder') {
-                    setFolders(folders.map(f => f._id === item._id ? res.data : f));
+                    setFolders(prev => prev.map(f => f._id === item._id ? updatedItem : f));
                 } else {
-                    setFiles(files.map(f => f._id === item._id ? res.data : f));
-                    if (recentFiles.some(rf => rf._id === item._id)) {
-                        setRecentFiles(recentFiles.map(rf => rf._id === item._id ? res.data : rf));
-                    }
+                    setFiles(prev => prev.map(f => f._id === item._id ? updatedItem : f));
+                    setRecentFiles(prev => prev.map(rf => rf._id === item._id ? updatedItem : rf));
                 }
             } catch (err) {
                 console.error('Star error:', err);
@@ -252,18 +253,25 @@ const Dashboard = () => {
             try {
                 const endpoint = type === 'folder' ? `/folders/${item._id}/pin?space=${activeSpace}` : `/files/${item._id}/pin?space=${activeSpace}`;
                 const res = await api.patch(endpoint);
+                const updatedItem = res.data;
+                
                 if (type === 'folder') {
                     setFolders(prev => {
-                        const updated = prev.map(f => f._id === item._id ? res.data : f);
-                        return updated.sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) || new Date(b.updatedAt) - new Date(a.updatedAt));
+                        const updated = prev.map(f => f._id === item._id ? updatedItem : f);
+                        return [...updated].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) || new Date(b.updatedAt) - new Date(a.updatedAt));
                     });
                 } else {
                     setFiles(prev => {
-                        const updated = prev.map(f => f._id === item._id ? res.data : f);
-                        return updated.sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) || new Date(b.updatedAt) - new Date(a.updatedAt));
+                        const updated = prev.map(f => f._id === item._id ? updatedItem : f);
+                        return [...updated].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) || new Date(b.updatedAt) - new Date(a.updatedAt));
+                    });
+                    
+                    setRecentFiles(prev => {
+                        const updated = prev.map(f => f._id === item._id ? updatedItem : f);
+                        return [...updated].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) || new Date(b.updatedAt) - new Date(a.updatedAt));
                     });
                 }
-                showToast(res.data.isPinned ? 'Item pinned to top' : 'Item unpinned', 'success');
+                showToast(updatedItem.isPinned ? 'Item pinned to top' : 'Item unpinned', 'success');
             } catch (err) {
                 console.error('Pin error:', err);
                 showToast('Failed to update pin status', 'error');
@@ -272,6 +280,23 @@ const Dashboard = () => {
             setLockingFolder(item);
         } else if (action === 'remove_lock') {
             setRemovingLockFolder(item);
+        } else if (action === 'move') {
+            setMovingItem({ ...item, type });
+            setIsMoveModalOpen(true);
+        }
+    };
+
+    const handleMove = async (targetFolderId, item, type) => {
+        try {
+            const endpoint = type === 'folder' ? `/folders/${item._id}/move` : `/files/${item._id}/move`;
+            await api.patch(endpoint, { targetFolderId });
+            showToast('Item moved successfully', 'success');
+            setIsMoveModalOpen(false);
+            setMovingItem(null);
+            fetchData(currentFolderId);
+        } catch (error) {
+            console.error('Move error:', error);
+            showToast(error.response?.data?.error || 'Failed to move item', 'error');
         }
     };
 
@@ -306,7 +331,6 @@ const Dashboard = () => {
                 </h1>
 
                 <div className="flex items-center gap-2">
-                    {/* New Button with Dropdown */}
                     <div className="relative">
                         <button
                             onClick={(e) => { e.stopPropagation(); setIsNewMenuOpen(!isNewMenuOpen); }}
@@ -319,7 +343,7 @@ const Dashboard = () => {
                         {isNewMenuOpen && (
                             <div
                                 onClick={(e) => e.stopPropagation()}
-                                className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in zoom-in duration-150 origin-top-right"
+                                className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-[calc(100vw-2rem)] max-w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in zoom-in duration-150 origin-top-left sm:origin-top-right"
                             >
                                 <button
                                     onClick={() => { setIsCreateModalOpen(true); setIsNewMenuOpen(false); }}
@@ -360,10 +384,12 @@ const Dashboard = () => {
                                     className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 text-slate-700 transition-colors group"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <FileTextIcon size={18} className="text-blue-500" />
+                                        <div className="w-5 h-5 bg-blue-600 rounded flex items-center justify-center shrink-0">
+                                            <FileTextIcon size={12} className="text-white" />
+                                        </div>
                                         <span className="font-medium">Google Docs</span>
                                     </div>
-                                    <PlusIcon size={14} className="text-slate-400 opacity-0 group-hover:opacity-100" />
+                                    <ArrowUpRightIcon size={14} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-all" />
                                 </a>
                                 <a
                                     href="https://docs.google.com/spreadsheets/create"
@@ -372,45 +398,12 @@ const Dashboard = () => {
                                     className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 text-slate-700 transition-colors group"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <TableIcon size={18} className="text-green-600" />
+                                        <div className="w-5 h-5 bg-green-600 rounded flex items-center justify-center shrink-0">
+                                            <LayoutGridIcon size={12} className="text-white" />
+                                        </div>
                                         <span className="font-medium">Google Sheets</span>
                                     </div>
-                                    <PlusIcon size={14} className="text-slate-400 opacity-0 group-hover:opacity-100" />
-                                </a>
-                                <a
-                                    href="https://docs.google.com/presentation/create"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 text-slate-700 transition-colors group"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <PresentationIcon size={18} className="text-amber-500" />
-                                        <span className="font-medium">Google Slides</span>
-                                    </div>
-                                    <PlusIcon size={14} className="text-slate-400 opacity-0 group-hover:opacity-100" />
-                                </a>
-                                <a
-                                    href="https://vids.new"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 text-slate-700 transition-colors group"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <VideoIcon size={18} className="text-purple-500" />
-                                        <span className="font-medium">Google Vids</span>
-                                    </div>
-                                </a>
-                                <a
-                                    href="https://docs.google.com/forms/create"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 text-slate-700 transition-colors group"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <FormInputIcon size={18} className="text-purple-700" />
-                                        <span className="font-medium">Google Forms</span>
-                                    </div>
-                                    <PlusIcon size={14} className="text-slate-400 opacity-0 group-hover:opacity-100" />
+                                    <ArrowUpRightIcon size={14} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-all" />
                                 </a>
                             </div>
                         )}
@@ -465,68 +458,79 @@ const Dashboard = () => {
                             </div>
                         )}
 
-                        <div className="space-y-4">
-                            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Folders</h2>
-                            <div className={viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" : "bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm flex flex-col"}>
-                                {filteredFolders.map(folder => (
-                                    <FolderCard
-                                        key={folder._id}
-                                        folder={folder}
-                                        onClick={handleNavigate}
-                                        onContextMenu={handleContextMenu}
-                                        viewMode={viewMode}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Files</h2>
-                            {viewMode === 'grid' ? (
-                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                                    {filteredFiles.map(file => (
-                                        <FileCard
-                                            key={file._id}
-                                            file={file}
+                        {filteredFolders.length > 0 && (
+                            <div className="space-y-4">
+                                <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Folders</h2>
+                                <div className={viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" : "bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm flex flex-col"}>
+                                    {filteredFolders.map(folder => (
+                                        <FolderCard
+                                            key={folder._id}
+                                            folder={folder}
+                                            onClick={handleNavigate}
                                             onContextMenu={handleContextMenu}
-                                            onClick={() => setPreviewFile(file)}
                                             viewMode={viewMode}
                                         />
                                     ))}
                                 </div>
-                            ) : (
-                                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm flex flex-col">
-                                    {/* List View Header */}
-                                    <div className="flex items-center p-3 gap-4 border-b border-slate-100 bg-slate-50/50">
-                                        <div className="w-10 shrink-0" /> {/* Icon column spacer */}
-                                        <div className="flex-1 min-w-0">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</span>
-                                        </div>
-                                        <div className="w-32 hidden lg:block shrink-0">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Owner</span>
-                                        </div>
-                                        <div className="w-32 hidden xl:block shrink-0">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Modified</span>
-                                        </div>
-                                        <div className="w-20 hidden md:block shrink-0 text-right">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Size</span>
-                                        </div>
-                                        <div className="w-10 shrink-0" /> {/* Actions column spacer */}
-                                    </div>
-                                    <div className="flex flex-col">
+                            </div>
+                        )}
+
+                        {filteredFiles.length > 0 && (
+                            <div className="space-y-4">
+                                <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Files</h2>
+                                {viewMode === 'grid' ? (
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                                         {filteredFiles.map(file => (
                                             <FileCard
                                                 key={file._id}
                                                 file={file}
                                                 onContextMenu={handleContextMenu}
                                                 onClick={() => setPreviewFile(file)}
-                                                viewMode="list"
+                                                viewMode={viewMode}
                                             />
                                         ))}
                                     </div>
-                                </div>
-                            )}
-                        </div>
+                                ) : (
+                                    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm flex flex-col">
+                                        <div className="flex items-center p-3 gap-4 border-b border-slate-100 bg-slate-50/50">
+                                            <div className="w-10 shrink-0" />
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</span>
+                                            </div>
+                                            <div className="w-32 hidden lg:block shrink-0">
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Owner</span>
+                                            </div>
+                                            <div className="w-32 hidden xl:block shrink-0">
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Modified</span>
+                                            </div>
+                                            <div className="w-20 hidden md:block shrink-0 text-right">
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Size</span>
+                                            </div>
+                                            <div className="w-10 shrink-0" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            {filteredFiles.map(file => (
+                                                <FileCard
+                                                    key={file._id}
+                                                    file={file}
+                                                    onContextMenu={handleContextMenu}
+                                                    onClick={() => setPreviewFile(file)}
+                                                    viewMode="list"
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        
+                        {filteredFolders.length === 0 && filteredFiles.length === 0 && !loading && (
+                            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                                <UploadIcon size={48} className="mb-4 opacity-20" />
+                                <p className="text-lg font-medium">This folder is empty</p>
+                                <p className="text-sm">Drag and drop files here to upload</p>
+                            </div>
+                        )}
                     </div>
                 )}
             </FileUploadZone>
@@ -571,6 +575,17 @@ const Dashboard = () => {
                 onClose={() => setColorPickerItem(null)}
                 onSelect={handleColorSelect}
                 currentColor={colorPickerItem?.color}
+            />
+
+            <MoveModal
+                isOpen={isMoveModalOpen}
+                onClose={() => {
+                    setIsMoveModalOpen(false);
+                    setMovingItem(null);
+                }}
+                onMove={handleMove}
+                item={movingItem}
+                type={movingItem?.type}
             />
 
             <FolderPasswordModal

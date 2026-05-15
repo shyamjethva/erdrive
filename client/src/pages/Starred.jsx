@@ -11,6 +11,7 @@ import FilePreviewModal from '../components/drive/FilePreviewModal';
 import ShareModal from '../components/drive/ShareModal';
 import ColorPickerModal from '../components/drive/ColorPickerModal';
 import FolderPasswordModal from '../components/drive/FolderPasswordModal';
+import MoveModal from '../components/drive/MoveModal';
 
 const Starred = () => {
     const { user, activeSpace } = useAuth();
@@ -28,6 +29,8 @@ const Starred = () => {
     const [lockingFolder, setLockingFolder] = useState(null);
     const [unlockingFolder, setUnlockingFolder] = useState(null);
     const [removingLockFolder, setRemovingLockFolder] = useState(null);
+    const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+    const [movingItem, setMovingItem] = useState(null);
     const [unlockedFolders, setUnlockedFolders] = useState(new Set());
 
     const fetchData = async () => {
@@ -136,18 +139,22 @@ const Starred = () => {
             setSharingItem({ ...item, type });
             setIsShareModalOpen(true);
         } else if (action === 'pin') {
-            console.log('Pin Action Debug:', { item, type, id: item._id });
             try {
                 const endpoint = type === 'folder' ? `/folders/${item._id}/pin` : `/files/${item._id}/pin`;
-                console.log('Request Endpoint:', endpoint);
                 const res = await api.patch(endpoint);
-                console.log('Response:', res.data);
+                const updatedItem = res.data;
                 if (type === 'folder') {
-                    setStarredFolders(starredFolders.map(f => f._id === item._id ? res.data : f));
+                    setStarredFolders(prev => {
+                        const updated = prev.map(f => f._id === item._id ? updatedItem : f);
+                        return [...updated].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) || new Date(b.updatedAt) - new Date(a.updatedAt));
+                    });
                 } else {
-                    setStarredFiles(starredFiles.map(f => f._id === item._id ? res.data : f));
+                    setStarredFiles(prev => {
+                        const updated = prev.map(f => f._id === item._id ? updatedItem : f);
+                        return [...updated].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) || new Date(b.updatedAt) - new Date(a.updatedAt));
+                    });
                 }
-                showToast(res.data.isPinned ? 'Item pinned to top' : 'Item unpinned', 'success');
+                showToast(updatedItem.isPinned ? 'Item pinned to top' : 'Item unpinned', 'success');
             } catch (err) {
                 console.error('Pin error:', err);
                 showToast('Failed to update pin status', 'error');
@@ -158,6 +165,23 @@ const Starred = () => {
             setLockingFolder(item);
         } else if (action === 'remove_lock') {
             setRemovingLockFolder(item);
+        } else if (action === 'move') {
+            setMovingItem({ ...item, type });
+            setIsMoveModalOpen(true);
+        }
+    };
+
+    const handleMove = async (targetFolderId, item, type) => {
+        try {
+            const endpoint = type === 'folder' ? `/folders/${item._id}/move` : `/files/${item._id}/move`;
+            await api.patch(endpoint, { targetFolderId });
+            showToast('Item moved successfully', 'success');
+            setIsMoveModalOpen(false);
+            setMovingItem(null);
+            fetchData();
+        } catch (error) {
+            console.error('Move error:', error);
+            showToast(error.response?.data?.error || 'Failed to move item', 'error');
         }
     };
 
@@ -328,6 +352,17 @@ const Starred = () => {
                 onClose={() => setColorPickerItem(null)}
                 onSelect={handleColorSelect}
                 currentColor={colorPickerItem?.color}
+            />
+
+            <MoveModal
+                isOpen={isMoveModalOpen}
+                onClose={() => {
+                    setIsMoveModalOpen(false);
+                    setMovingItem(null);
+                }}
+                onMove={handleMove}
+                item={movingItem}
+                type={movingItem?.type}
             />
 
             <FolderPasswordModal

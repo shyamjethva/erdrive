@@ -128,11 +128,18 @@ const FileCard = ({ file, onContextMenu, onClick, viewMode = 'grid' }) => {
             className="group bg-white rounded-2xl border overflow-hidden hover:border-primary-300 hover:shadow-md transition-all cursor-pointer flex flex-col shrink-0"
         >
             <div className="h-32 bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-primary-400 transition-colors relative overflow-hidden">
-                {file.isPinned && (
-                    <div className="absolute top-2 right-2 z-10 bg-primary-600 p-1.5 rounded-lg shadow-lg border border-primary-400 animate-in zoom-in-50 duration-300">
-                        <PinIcon size={12} className="text-white fill-white" />
-                    </div>
-                )}
+                <div className="absolute top-2 right-2 z-10 flex flex-row-reverse gap-1.5">
+                    {file.isPinned && (
+                        <div className="bg-primary-600 p-1.5 rounded-lg shadow-lg border border-primary-400 animate-in zoom-in-50 duration-300">
+                            <PinIcon size={12} className="text-white fill-white" />
+                        </div>
+                    )}
+                    {file.isStarred && (
+                        <div className="bg-amber-500 p-1.5 rounded-lg shadow-lg border border-amber-400 animate-in zoom-in-50 duration-300">
+                            <StarIcon size={12} className="text-white fill-white" />
+                        </div>
+                    )}
+                </div>
                 {file.mimetype.startsWith('image/') && file.previewUrl ? (
                     <img
                         src={`${api.defaults.baseURL.replace('/api', '')}/storage${file.previewUrl.startsWith('/') ? file.previewUrl : `/${file.previewUrl}`}`}
@@ -154,9 +161,7 @@ const FileCard = ({ file, onContextMenu, onClick, viewMode = 'grid' }) => {
             <div className="p-4 border-t relative">
                 <div className="flex items-center justify-between gap-2 overflow-hidden">
                     <h3 className="font-semibold text-slate-800 break-words line-clamp-2 text-sm flex-1 flex items-center gap-1.5" title={file.name}>
-                        {file.isPinned && <PinIcon size={12} className="text-primary-500 fill-primary-500 shrink-0" />}
                         {file.name}
-                        {file.isStarred && <StarIcon size={12} className="text-amber-500 fill-amber-500 shrink-0" />}
                     </h3>
                     <button onClick={handleThreeDotsClick} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg opacity-0 group-hover:opacity-100 transition-all block cursor-pointer">
                         <MoreVerticalIcon size={16} />
