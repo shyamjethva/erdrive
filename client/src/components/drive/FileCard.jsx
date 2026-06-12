@@ -142,7 +142,7 @@ const FileCard = ({ file, onContextMenu, onClick, viewMode = 'grid' }) => {
                 </div>
                 {file.mimetype.startsWith('image/') && file.previewUrl ? (
                     <img
-                        src={`${api.defaults.baseURL.replace('/api', '')}/storage${file.previewUrl.startsWith('/') ? file.previewUrl : `/${file.previewUrl}`}`}
+                        src={`${api.defaults.baseURL.replace('/api', '')}${file.previewUrl}?token=${sessionStorage.getItem('token')}`}
                         alt={file.name}
                         className="w-full h-full object-cover transition-transform group-hover:scale-105"
                     />
