@@ -40,6 +40,10 @@ const fileSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    isQuickAccess: {
+        type: Boolean,
+        default: false
+    },
     sharedWith: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'

@@ -44,7 +44,7 @@ const Dashboard = () => {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
     const [contextMenu, setContextMenu] = useState(null);
-    const [recentFiles, setRecentFiles] = useState([]);
+    const [quickAccessItems, setQuickAccessItems] = useState([]);
     const [previewFile, setPreviewFile] = useState(null);
     const [isNewMenuOpen, setIsNewMenuOpen] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -75,10 +75,13 @@ const Dashboard = () => {
             setFolders(Array.isArray(foldersRes.data) ? foldersRes.data : []);
             setFiles(Array.isArray(filesRes.data) ? filesRes.data : []);
 
-            // Fetch recent files only on root
+            // Fetch quick access items only on root
             if (folderId === 'root' || folderId === effectiveRootId) {
-                const recentRes = await api.get(`/files/recent?space=${activeSpace}`);
-                setRecentFiles(Array.isArray(recentRes.data) ? recentRes.data : []);
+                const qaFilesRes = await api.get(`/files/quick-access/all?space=${activeSpace}`);
+                const qaFoldersRes = await api.get(`/folders/quick-access/all?space=${activeSpace}`);
+                const filesQA = Array.isArray(qaFilesRes.data) ? qaFilesRes.data.map(f => ({...f, type: 'file'})) : [];
+                const foldersQA = Array.isArray(qaFoldersRes.data) ? qaFoldersRes.data.map(f => ({...f, type: 'folder'})) : [];
+                setQuickAccessItems([...foldersQA, ...filesQA]);
             }
 
             // Fetch folder breadcrumbs/trail
@@ -176,9 +179,10 @@ const Dashboard = () => {
                     await api.patch(endpoint);
                     if (type === 'folder') {
                         setFolders(prev => prev.filter(f => f._id !== item._id));
+                        setQuickAccessItems(prev => prev.filter(f => f._id !== item._id));
                     } else {
                         setFiles(prev => prev.filter(f => f._id !== item._id));
-                        setRecentFiles(prev => prev.filter(rf => rf._id !== item._id));
+                        setQuickAccessItems(prev => prev.filter(rf => rf._id !== item._id));
                     }
                 } catch (err) {
                     console.error(err);
@@ -193,9 +197,10 @@ const Dashboard = () => {
                     const updatedItem = res.data;
                     if (type === 'folder') {
                         setFolders(prev => prev.map(f => f._id === item._id ? updatedItem : f));
+                        setQuickAccessItems(prev => prev.map(f => f._id === item._id ? {...updatedItem, type: 'folder'} : f));
                     } else {
                         setFiles(prev => prev.map(f => f._id === item._id ? updatedItem : f));
-                        setRecentFiles(prev => prev.map(f => f._id === item._id ? updatedItem : f));
+                        setQuickAccessItems(prev => prev.map(f => f._id === item._id ? {...updatedItem, type: 'file'} : f));
                     }
                 } catch (err) {
                     console.error('Rename error:', err);
@@ -242,9 +247,10 @@ const Dashboard = () => {
                 const updatedItem = res.data;
                 if (type === 'folder') {
                     setFolders(prev => prev.map(f => f._id === item._id ? updatedItem : f));
+                    setQuickAccessItems(prev => prev.map(rf => rf._id === item._id ? {...updatedItem, type: 'folder'} : rf));
                 } else {
                     setFiles(prev => prev.map(f => f._id === item._id ? updatedItem : f));
-                    setRecentFiles(prev => prev.map(rf => rf._id === item._id ? updatedItem : rf));
+                    setQuickAccessItems(prev => prev.map(rf => rf._id === item._id ? {...updatedItem, type: 'file'} : rf));
                 }
             } catch (err) {
                 console.error('Star error:', err);
@@ -266,8 +272,8 @@ const Dashboard = () => {
                         return [...updated].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) || new Date(b.updatedAt) - new Date(a.updatedAt));
                     });
                     
-                    setRecentFiles(prev => {
-                        const updated = prev.map(f => f._id === item._id ? updatedItem : f);
+                    setQuickAccessItems(prev => {
+                        const updated = prev.map(f => f._id === item._id ? {...updatedItem, type: 'file'} : f);
                         return [...updated].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) || new Date(b.updatedAt) - new Date(a.updatedAt));
                     });
                 }
@@ -275,6 +281,36 @@ const Dashboard = () => {
             } catch (err) {
                 console.error('Pin error:', err);
                 showToast('Failed to update pin status', 'error');
+            }
+        } else if (action === 'quick_access') {
+            try {
+                const endpoint = type === 'folder' ? `/folders/${item._id}/quick-access?space=${activeSpace}` : `/files/${item._id}/quick-access?space=${activeSpace}`;
+                const res = await api.patch(endpoint);
+                const updatedItem = res.data;
+                
+                if (type === 'folder') {
+                    setFolders(prev => prev.map(f => f._id === item._id ? updatedItem : f));
+                    setQuickAccessItems(prev => {
+                        if (updatedItem.isQuickAccess) {
+                            return [...prev, { ...updatedItem, type: 'folder' }];
+                        } else {
+                            return prev.filter(i => i._id !== item._id);
+                        }
+                    });
+                } else {
+                    setFiles(prev => prev.map(f => f._id === item._id ? updatedItem : f));
+                    setQuickAccessItems(prev => {
+                        if (updatedItem.isQuickAccess) {
+                            return [...prev, { ...updatedItem, type: 'file' }];
+                        } else {
+                            return prev.filter(i => i._id !== item._id);
+                        }
+                    });
+                }
+                showToast(updatedItem.isQuickAccess ? 'Added to Quick Access' : 'Removed from Quick Access', 'success');
+            } catch (err) {
+                console.error('Quick Access error:', err);
+                showToast('Failed to update Quick Access', 'error');
             }
         } else if (action === 'lock') {
             setLockingFolder(item);
@@ -439,20 +475,30 @@ const Dashboard = () => {
                     </div>
                 ) : (
                     <div className="space-y-8">
-                        {currentFolderId === 'root' && recentFiles.length > 0 && (
+                        {currentFolderId === 'root' && quickAccessItems.length > 0 && (
                             <div className="space-y-4">
                                 <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
                                     <div className="w-1.5 h-1.5 rounded-full bg-primary-500" />
                                     Quick Access
                                 </h2>
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                                    {recentFiles.map(file => (
-                                        <FileCard
-                                            key={file._id}
-                                            file={file}
-                                            onContextMenu={handleContextMenu}
-                                            onClick={() => setPreviewFile(file)}
-                                        />
+                                    {quickAccessItems.map(item => (
+                                        item.type === 'folder' ? (
+                                            <FolderCard
+                                                key={`qa-folder-${item._id}`}
+                                                folder={item}
+                                                onClick={handleNavigate}
+                                                onContextMenu={handleContextMenu}
+                                                viewMode="grid"
+                                            />
+                                        ) : (
+                                            <FileCard
+                                                key={`qa-file-${item._id}`}
+                                                file={item}
+                                                onContextMenu={handleContextMenu}
+                                                onClick={() => setPreviewFile(item)}
+                                            />
+                                        )
                                     ))}
                                 </div>
                             </div>

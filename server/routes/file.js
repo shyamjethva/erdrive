@@ -187,6 +187,41 @@ router.patch('/:id/pin', auth, async (req, res) => {
     }
 });
 
+// Quick Access toggle
+router.patch('/:id/quick-access', auth, async (req, res) => {
+    try {
+        const file = await File.findById(req.params.id);
+        if (!file) {
+            return res.status(404).send({ error: 'File not found' });
+        }
+
+        const isOwner = file.ownerId.toString() === req.user._id.toString();
+        const isShared = (file.sharedWith || []).some(id => id.toString() === req.user._id.toString());
+
+        if (!isOwner && !isShared) {
+            return res.status(403).send({ error: 'Permission denied' });
+        }
+
+        file.isQuickAccess = !file.isQuickAccess;
+        await file.save();
+        res.send(file);
+    } catch (error) {
+        res.status(400).send(error);
+    }
+});
+
+// Get Quick Access files
+router.get('/quick-access/all', auth, ensureSpaceAuth, async (req, res) => {
+    try {
+        const { space: spaceType = 'main' } = req.query;
+        const files = await File.find({ ownerId: req.user._id, isQuickAccess: true, isTrash: false, spaceType })
+            .populate('ownerId', 'username avatar');
+        res.send(files);
+    } catch (error) {
+        res.status(500).send(error);
+    }
+});
+
 // Get starred files
 router.get('/starred/all', auth, ensureSpaceAuth, async (req, res) => {
     try {
@@ -306,7 +341,6 @@ router.post('/upload', auth, upload.array('files'), async (req, res) => {
 
         res.status(201).send(uploadedFiles);
     } catch (error) {
-        console.error('Upload error:', error);
         res.status(400).send({ 
             error: 'Upload failed', 
             message: error.message,

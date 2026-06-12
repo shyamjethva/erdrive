@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Trash2Icon, Edit3Icon, DownloadIcon, LinkIcon, XIcon, RotateCcwIcon, StarIcon, PaletteIcon, PinIcon, LockIcon, UnlockIcon, FolderIcon, Share2Icon, ArrowRightIcon } from 'lucide-react';
+import { Trash2Icon, Edit3Icon, DownloadIcon, LinkIcon, XIcon, RotateCcwIcon, StarIcon, PaletteIcon, PinIcon, LockIcon, UnlockIcon, FolderIcon, Share2Icon, ArrowRightIcon, ZapIcon } from 'lucide-react';
 
 const ContextMenu = ({ x, y, item, type, onClose, onAction, isTrashNode }) => {
     const { user } = useAuth();
@@ -49,6 +49,7 @@ const ContextMenu = ({ x, y, item, type, onClose, onAction, isTrashNode }) => {
         { label: 'Move to...', icon: ArrowRightIcon, action: 'move', color: 'text-slate-600' },
         { label: 'Share Link', icon: LinkIcon, action: 'share', color: 'text-slate-600' },
         { label: 'Change Color', icon: PaletteIcon, action: 'change_color', color: 'text-slate-600', hide: type === 'file' },
+        { label: item?.isQuickAccess ? 'Remove from Quick Access' : 'Add to Quick Access', icon: ZapIcon, action: 'quick_access', color: item?.isQuickAccess ? 'text-blue-500' : 'text-slate-600' },
         { label: item?.isPinned ? 'Unpin from Top' : 'Pin to Top', icon: PinIcon, action: 'pin', color: item?.isPinned ? 'text-primary-600' : 'text-slate-600' },
         { label: item?.isStarred ? 'Remove from Starred' : 'Add to Starred', icon: StarIcon, action: 'star', color: item?.isStarred ? 'text-amber-500' : 'text-slate-600' },
         { label: 'Download', icon: DownloadIcon, action: 'download', color: 'text-slate-600', hide: type === 'folder' },

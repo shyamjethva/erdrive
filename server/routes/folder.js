@@ -232,6 +232,41 @@ router.patch('/:id/pin', auth, async (req, res) => {
     }
 });
 
+// Quick Access toggle folder
+router.patch('/:id/quick-access', auth, async (req, res) => {
+    try {
+        const folder = await Folder.findById(req.params.id);
+        if (!folder) {
+            return res.status(404).send({ error: 'Folder not found' });
+        }
+
+        const isOwner = folder.ownerId.toString() === req.user._id.toString();
+        const isShared = (folder.sharedWith || []).some(id => id.toString() === req.user._id.toString());
+
+        if (!isOwner && !isShared) {
+            return res.status(403).send({ error: 'Permission denied' });
+        }
+
+        folder.isQuickAccess = !folder.isQuickAccess;
+        await folder.save();
+        res.send(folder);
+    } catch (error) {
+        res.status(400).send(error);
+    }
+});
+
+// Get Quick Access folders
+router.get('/quick-access/all', auth, ensureSpaceAuth, async (req, res) => {
+    try {
+        const { space: spaceType = 'main' } = req.query;
+        const folders = await Folder.find({ ownerId: req.user._id, isQuickAccess: true, isTrash: false, spaceType })
+            .populate('ownerId', 'username avatar');
+        res.send(folders);
+    } catch (error) {
+        res.status(500).send(error);
+    }
+});
+
 // Create folder
 router.post('/', auth, ensureSpaceAuth, async (req, res) => {
     try {
